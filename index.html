@@ -461,6 +461,68 @@
 
     .modal-salvar:hover { background: var(--emerald-700); }
 
+    /* ── Modal Resumo (tela cheia) ── */
+    .modal-resumo-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        display: none;
+        flex-direction: column;
+        z-index: 60;
+    }
+
+    .modal-resumo-overlay.aberto { display: flex; }
+
+    .modal-resumo-painel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+        min-height: 0;
+    }
+
+    .modal-resumo-header {
+        background: var(--forest-900);
+        color: #f1f5f9;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }
+
+    .modal-resumo-titulo { font-size: 1rem; font-weight: 800; letter-spacing: 0.02em; }
+
+    .modal-resumo-fechar {
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        border: 1px solid #0b6b50;
+        background: #065f46;
+        color: #f1f5f9;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .modal-resumo-fechar:hover { background: var(--emerald-700); }
+
+    .modal-resumo-corpo {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .resumo-filtros { margin-bottom: 18px; }
+
+    .resumo-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        margin-bottom: 18px;
+    }
+
+    .resumo-tabela-card .tabela-wrap { max-height: none; }
+
     /* ── Tabela + Comparativo ── */
     .row-tabela-comparativo { display: flex; flex-wrap: wrap; gap: 18px; align-items: stretch; }
     .detalhamento-card { flex: 2 1 620px; }
@@ -666,6 +728,89 @@
     </div>
 </div>
 
+<div class="modal-resumo-overlay" id="modalResumo">
+    <div class="modal-resumo-painel">
+        <div class="modal-resumo-header">
+            <div class="modal-resumo-titulo">📋 Resumo</div>
+            <button class="modal-resumo-fechar" id="btnFecharResumo" type="button" title="Fechar">✕</button>
+        </div>
+
+        <div class="modal-resumo-corpo">
+            <div class="filtros resumo-filtros">
+                <div class="filtro-campo">
+                    <label for="resumoFiltroId">ID</label>
+                    <input type="text" id="resumoFiltroId" placeholder="Buscar por ID...">
+                </div>
+                <div class="filtro-campo">
+                    <label for="resumoFiltroClasse">Cultura</label>
+                    <select id="resumoFiltroClasse"><option value="">Todas</option></select>
+                </div>
+                <div class="filtro-campo">
+                    <label for="resumoFiltroParceiro">Parceiro</label>
+                    <select id="resumoFiltroParceiro"><option value="">Todos</option></select>
+                </div>
+                <div class="filtro-campo">
+                    <label for="resumoFiltroMotivo">Motivo</label>
+                    <select id="resumoFiltroMotivo"><option value="">Todos</option></select>
+                </div>
+                <div class="filtro-campo">
+                    <label>DT Descarte</label>
+                    <div class="filtro-periodo">
+                        <input type="date" id="resumoDescarteDe">
+                        <span>até</span>
+                        <input type="date" id="resumoDescarteAte">
+                    </div>
+                </div>
+                <div class="filtro-campo">
+                    <label>DT Colheita</label>
+                    <div class="filtro-periodo">
+                        <input type="date" id="resumoColheitaDe">
+                        <span>até</span>
+                        <input type="date" id="resumoColheitaAte">
+                    </div>
+                </div>
+                <button class="btn-imprimir" id="btnLimparFiltrosResumo" type="button">✖️ Limpar</button>
+                <button class="btn-imprimir" id="btnCapturarResumo" type="button">📸 Capturar Página (HD)</button>
+            </div>
+
+            <div class="card resumo-stats">
+                <div class="stat-card">
+                    <div class="stat-label">Produção Total</div>
+                    <div class="stat-valor" id="resumoStatProducao">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Descarte Total</div>
+                    <div class="stat-valor" id="resumoStatDescarte">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">% Descarte</div>
+                    <div class="stat-valor" id="resumoStatPercentual">—</div>
+                </div>
+            </div>
+
+            <div class="card resumo-tabela-card">
+                <div class="tabela-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>DT Colheita</th>
+                                <th class="sortavel" id="thResumoData">DT Descarte ▽</th>
+                                <th>Parceiro</th>
+                                <th>Motivo</th>
+                                <th>Produção (kg)</th>
+                                <th>Descarte (kg)</th>
+                                <th>% Descarte</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoResumoTabela"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <main>
     <div class="filtros">
         <div class="filtro-campo">
@@ -693,6 +838,7 @@
         <button class="btn-imprimir" id="btnImprimir" type="button">🖨️ Imprimir Relatório</button>
         <button class="btn-imprimir" id="btnRotulos" type="button">🏷️ Mostrar Rótulos</button>
         <button class="btn-imprimir" id="btnCapturar" type="button">📸 Capturar Página (HD)</button>
+        <button class="btn-imprimir" id="btnResumo" type="button">📋 Resumo</button>
     </div>
 
     <div id="conteudo">
@@ -731,6 +877,8 @@
     let ultimosExtras = null;
     let ultimosFiltros = null;
     let ultimasDicasIA = [];
+    let ultimasLinhasResumo = [];
+    let ordenacaoResumoAsc = false;
 
     function applyBrandAssets() {
         const favicon = document.getElementById('siteFavicon');
@@ -939,12 +1087,13 @@
             return { diaSemana: nome, kg, percentual: descarteTotal ? (kg / descarteTotal * 100) : 0 };
         });
 
-        // % da linha relativo à produção do parceiro naquele dia
-        // (ou, quando a produção não é quebrada por parceiro, à produção total do dia)
+        // % da linha relativo à produção do parceiro no dia em que a colheita ocorreu
+        // (não no dia do descarte, que pode ser posterior) — ou, quando a produção não é
+        // quebrada por parceiro, à produção total do dia da colheita.
         const tabela = descarteRows
             .map(r => {
-                const chaveParceiroData = normalizarTexto(r.parceiro) + '|' + r.data;
-                const producaoRef = producaoPorParceiroData[chaveParceiroData] || producaoPorData[r.data] || 0;
+                const chaveParceiroData = normalizarTexto(r.parceiro) + '|' + r.dataColheita;
+                const producaoRef = producaoPorParceiroData[chaveParceiroData] || producaoPorData[r.dataColheita] || 0;
                 return {
                     data: r.data,
                     parceiro: r.parceiro,
@@ -1735,6 +1884,43 @@
         }
     }
 
+    // Captura o conteúdo do modal Resumo (inclusive o que está fora da área visível pelo
+    // scroll interno) como uma imagem PNG em alta resolução.
+    async function capturarResumo() {
+        const btn = document.getElementById('btnCapturarResumo');
+        const painel = document.querySelector('.modal-resumo-painel');
+        const corpo = document.querySelector('.modal-resumo-corpo');
+        const textoOriginal = btn.textContent;
+        const overflowOriginal = corpo.style.overflowY;
+        const alturaOriginal = corpo.style.maxHeight;
+
+        btn.disabled = true;
+        btn.textContent = '📸 Gerando imagem...';
+        corpo.style.overflowY = 'visible';
+        corpo.style.maxHeight = 'none';
+
+        try {
+            const canvas = await html2canvas(painel, {
+                scale: 3,
+                useCORS: true,
+                backgroundColor: '#f3f5f4',
+                windowWidth: painel.scrollWidth,
+                windowHeight: painel.scrollHeight
+            });
+            const link = document.createElement('a');
+            link.download = `spg-resumo-descarte-${hojeISO()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch {
+            alert('Não foi possível gerar a captura do resumo.');
+        } finally {
+            corpo.style.overflowY = overflowOriginal;
+            corpo.style.maxHeight = alturaOriginal;
+            btn.disabled = false;
+            btn.textContent = textoOriginal;
+        }
+    }
+
     // ── Modal de configuração da chave da API (Groq) ──
     function abrirModalConfigIA() {
         const input = document.getElementById('inputGroqApiKey');
@@ -1759,6 +1945,147 @@
         }
         localStorage.setItem('groqApiKey', chave);
         fecharModalConfigIA();
+    }
+
+    // ── Modal Resumo (tela cheia): visão detalhada por lançamento, com filtros
+    // próprios e independentes dos filtros globais do painel. ──
+    function abrirModalResumo() {
+        if (!descarteCompleto || !producaoCompleto) {
+            alert('Aguarde o painel carregar os dados antes de abrir o resumo.');
+            return;
+        }
+        popularFiltrosResumo();
+        aplicarFiltrosResumo();
+        document.getElementById('modalResumo').classList.add('aberto');
+    }
+
+    function fecharModalResumo() {
+        document.getElementById('modalResumo').classList.remove('aberto');
+    }
+
+    function popularFiltrosResumo() {
+        const selClasse = document.getElementById('resumoFiltroClasse');
+        if (selClasse.dataset.preenchido) return;
+
+        const selParceiro = document.getElementById('resumoFiltroParceiro');
+        const selMotivo = document.getElementById('resumoFiltroMotivo');
+
+        const classes = [...new Set(descarteCompleto.map(r => r.classe).filter(Boolean))].sort();
+        const parceiros = [...new Set(descarteCompleto.map(r => r.parceiro).filter(Boolean))].sort();
+        const motivos = [...new Set(descarteCompleto.map(r => r.motivo).filter(Boolean))].sort();
+
+        classes.forEach(c => selClasse.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`));
+        parceiros.forEach(p => selParceiro.insertAdjacentHTML('beforeend', `<option value="${p}">${p}</option>`));
+        motivos.forEach(m => selMotivo.insertAdjacentHTML('beforeend', `<option value="${m}">${m}</option>`));
+
+        selClasse.dataset.preenchido = '1';
+    }
+
+    function limparFiltrosResumo() {
+        document.getElementById('resumoFiltroId').value = '';
+        document.getElementById('resumoFiltroClasse').value = '';
+        document.getElementById('resumoFiltroParceiro').value = '';
+        document.getElementById('resumoFiltroMotivo').value = '';
+        document.getElementById('resumoDescarteDe').value = '';
+        document.getElementById('resumoDescarteAte').value = '';
+        document.getElementById('resumoColheitaDe').value = '';
+        document.getElementById('resumoColheitaAte').value = '';
+        aplicarFiltrosResumo();
+    }
+
+    function aplicarFiltrosResumo() {
+        if (!descarteCompleto || !producaoCompleto) return;
+
+        const idBusca = normalizarTexto(document.getElementById('resumoFiltroId').value || '');
+        const classe = document.getElementById('resumoFiltroClasse').value;
+        const parceiro = document.getElementById('resumoFiltroParceiro').value;
+        const motivo = document.getElementById('resumoFiltroMotivo').value;
+        const descarteDe = document.getElementById('resumoDescarteDe').value;
+        const descarteAte = document.getElementById('resumoDescarteAte').value;
+        const colheitaDe = document.getElementById('resumoColheitaDe').value;
+        const colheitaAte = document.getElementById('resumoColheitaAte').value;
+
+        const classeNorm = classe ? normalizarTexto(classe) : '';
+        const parceiroNorm = parceiro ? normalizarTexto(parceiro) : '';
+        const motivoNorm = motivo ? normalizarTexto(motivo) : '';
+
+        const descarteFiltrado = descarteCompleto
+            .filter(r => r.descartadoKg > 0)
+            .filter(r => !idBusca || normalizarTexto(r.idExclusivo).includes(idBusca))
+            .filter(r => !classeNorm || normalizarTexto(r.classe) === classeNorm)
+            .filter(r => !parceiroNorm || normalizarTexto(r.parceiro) === parceiroNorm)
+            .filter(r => !motivoNorm || normalizarTexto(r.motivo) === motivoNorm)
+            .filter(r => !descarteDe || r.data >= descarteDe)
+            .filter(r => !descarteAte || r.data <= descarteAte)
+            .filter(r => !colheitaDe || (r.dataColheita && r.dataColheita >= colheitaDe))
+            .filter(r => !colheitaAte || (r.dataColheita && r.dataColheita <= colheitaAte));
+
+        const producaoFiltrada = producaoCompleto
+            .filter(r => !classeNorm || normalizarTexto(r.classe) === classeNorm)
+            .filter(r => !parceiroNorm || !r.parceiro || normalizarTexto(r.parceiro) === parceiroNorm)
+            .filter(r => !colheitaDe || r.data >= colheitaDe)
+            .filter(r => !colheitaAte || r.data <= colheitaAte)
+            .filter(r => !descarteDe || r.data >= descarteDe)
+            .filter(r => !descarteAte || r.data <= descarteAte);
+
+        const dados = agregarDados(descarteFiltrado, producaoFiltrada);
+
+        document.getElementById('resumoStatProducao').textContent = formatarKg(dados.producaoTotal);
+        document.getElementById('resumoStatDescarte').textContent = formatarKg(dados.descarteTotal);
+        document.getElementById('resumoStatPercentual').textContent = formatarPct(dados.percentualDescarte);
+
+        // Produção individual de cada lançamento: junta pelo parceiro + dia da COLHEITA
+        // (não o dia do descarte), já que é nesse dia que a produção foi de fato registrada.
+        const producaoPorParceiroData = {};
+        const producaoPorData = {};
+        producaoCompleto.forEach(r => {
+            producaoPorData[r.data] = (producaoPorData[r.data] || 0) + r.producaoKg;
+            if (!r.parceiro) return;
+            const chave = normalizarTexto(r.parceiro) + '|' + r.data;
+            producaoPorParceiroData[chave] = (producaoPorParceiroData[chave] || 0) + r.producaoKg;
+        });
+
+        ultimasLinhasResumo = descarteFiltrado.map(r => {
+            const chave = normalizarTexto(r.parceiro) + '|' + r.dataColheita;
+            const producaoRef = producaoPorParceiroData[chave] || producaoPorData[r.dataColheita] || 0;
+            const percentual = producaoRef ? (r.descartadoKg / producaoRef * 100) : 0;
+            return {
+                idExclusivo: r.idExclusivo,
+                dataColheita: r.dataColheita,
+                dataDescarte: r.data,
+                horaDescarte: r.horaDescarte,
+                parceiro: r.parceiro,
+                motivo: r.motivo,
+                producaoKg: producaoRef,
+                descartadoKg: r.descartadoKg,
+                percentual
+            };
+        });
+
+        renderizarTabelaResumo();
+    }
+
+    function renderizarTabelaResumo() {
+        const ordenada = [...ultimasLinhasResumo].sort((a, b) => {
+            const chaveA = `${a.dataDescarte} ${a.horaDescarte}`;
+            const chaveB = `${b.dataDescarte} ${b.horaDescarte}`;
+            return ordenacaoResumoAsc ? chaveA.localeCompare(chaveB) : chaveB.localeCompare(chaveA);
+        });
+
+        document.getElementById('thResumoData').textContent = `DT Descarte ${ordenacaoResumoAsc ? '△' : '▽'}`;
+
+        document.getElementById('corpoResumoTabela').innerHTML = ordenada.map(r => `
+            <tr>
+                <td>${r.idExclusivo || '—'}</td>
+                <td>${r.dataColheita ? formatarDataBarra(r.dataColheita) : '—'}</td>
+                <td>${formatarDataBarra(r.dataDescarte)} ${r.horaDescarte}</td>
+                <td>${r.parceiro || '—'}</td>
+                <td>${r.motivo || '—'}</td>
+                <td>${Number(r.producaoKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                <td>${Number(r.descartadoKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                <td><span class="pct-badge" style="background:${corPct(r.percentual)}">${formatarPct(r.percentual)}</span></td>
+            </tr>
+        `).join('') || '<tr><td colspan="8" style="text-align:center;">Sem registros para os filtros selecionados.</td></tr>';
     }
 
     // Gera dicas práticas de como evitar os principais motivos de descarte (cruzados com a
@@ -2047,6 +2374,20 @@ ${listaCombos}`;
     document.getElementById('modalConfigIA').addEventListener('click', (e) => {
         if (e.target.id === 'modalConfigIA') fecharModalConfigIA();
     });
+
+    document.getElementById('btnResumo').addEventListener('click', abrirModalResumo);
+    document.getElementById('btnFecharResumo').addEventListener('click', fecharModalResumo);
+    document.getElementById('btnLimparFiltrosResumo').addEventListener('click', limparFiltrosResumo);
+    document.getElementById('btnCapturarResumo').addEventListener('click', capturarResumo);
+    ['resumoFiltroClasse', 'resumoFiltroParceiro', 'resumoFiltroMotivo', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte'].forEach(id => {
+        document.getElementById(id).addEventListener('change', aplicarFiltrosResumo);
+    });
+    document.getElementById('resumoFiltroId').addEventListener('input', aplicarFiltrosResumo);
+    document.getElementById('thResumoData').addEventListener('click', () => {
+        ordenacaoResumoAsc = !ordenacaoResumoAsc;
+        renderizarTabelaResumo();
+    });
+
     document.getElementById('filtroDe').value = primeiroDiaDoMes();
     document.getElementById('filtroAte').value = hojeISO();
 
