@@ -2,9 +2,12 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SPG — Painel de Descarte</title>
 <link id="siteFavicon" rel="icon" type="image/png">
+<link id="siteAppleTouchIcon" rel="apple-touch-icon">
+<link id="siteManifest" rel="manifest">
+<meta name="theme-color" content="#064e3b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,7 +16,8 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
     :root {
-        --bg: #f3f5f4;
+        --bg: #eef3f1;
+        --forest-950: #03392b;
         --forest-900: #064e3b;
         --forest-800: #065f46;
         --emerald-700: #047857;
@@ -21,48 +25,69 @@
         --emerald-500: #10b981;
         --emerald-100: #d1fae5;
         --emerald-50:  #ecfdf5;
-        --text-primary: #1e293b;
-        --text-secondary: #64748b;
+        --text-primary: #182420;
+        --text-secondary: #5f7268;
         --rose-600: #e11d48;
         --rose-100: #ffe4e6;
-        --card-border: rgba(15, 23, 42, 0.06);
-        --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.06);
+        --card-border: rgba(6, 78, 59, 0.09);
+        --card-shadow: 0 1px 2px rgba(6, 45, 34, 0.04), 0 10px 30px rgba(6, 45, 34, 0.07);
+        --radius: 18px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: var(--bg);
+        /* Fundo com dois brilhos verdes bem suaves nos cantos, pra dar profundidade
+           sem virar distração — o gradiente fica parado enquanto a página rola. */
+        background:
+            radial-gradient(1100px 420px at 88% -10%, rgba(16, 185, 129, 0.09), transparent 60%),
+            radial-gradient(900px 380px at -12% 4%, rgba(6, 95, 70, 0.07), transparent 55%),
+            var(--bg);
+        background-attachment: fixed;
         color: var(--text-primary);
         min-height: 100vh;
+        min-height: 100dvh;
+        /* Trava a página pra nunca rolar na horizontal — se algo internamente ficar
+           largo demais, só aquele trecho (com overflow-x próprio) rola de lado. */
+        overflow-x: hidden;
+        -webkit-tap-highlight-color: transparent;
     }
 
+    button { touch-action: manipulation; }
+
+    :focus-visible { outline: 2px solid var(--emerald-500); outline-offset: 2px; }
+
     header {
-        background: var(--forest-900);
+        background: linear-gradient(120deg, var(--forest-950) 0%, var(--forest-900) 55%, #086a4e 100%);
         color: #f1f5f9;
-        padding: 18px 26px;
+        padding: 16px 28px;
+        padding-left: max(28px, env(safe-area-inset-left));
+        padding-right: max(28px, env(safe-area-inset-right));
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 14px;
         flex-wrap: wrap;
+        border-bottom: 1px solid rgba(167, 243, 208, 0.16);
+        box-shadow: 0 6px 24px rgba(3, 46, 35, 0.22);
     }
 
     .header-left { display: flex; align-items: center; gap: 14px; }
 
     header img {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
         background: white;
-        padding: 3px;
+        padding: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
     }
 
     header h1 {
-        font-size: 1rem;
+        font-size: 1.05rem;
         font-weight: 800;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
     }
 
@@ -75,35 +100,42 @@
         margin-top: 2px;
     }
 
-    .header-right { display: flex; align-items: center; gap: 14px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
 
-    .atualizacao { text-align: right; }
+    .atualizacao {
+        text-align: right;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(167, 243, 208, 0.18);
+        border-radius: 12px;
+        padding: 6px 12px;
+    }
     .atualizacao-label {
         display: block;
-        font-size: 0.62rem;
+        font-size: 0.6rem;
         color: #a7f3d0;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-weight: 700;
     }
-    .atualizacao-valor { font-size: 0.82rem; font-weight: 700; }
+    .atualizacao-valor { font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
     .btn-refresh-icone {
-        width: 34px; height: 34px;
-        border-radius: 50%;
-        border: 1px solid #0b6b50;
-        background: #065f46;
+        width: 38px; height: 38px;
+        border-radius: 12px;
+        border: 1px solid rgba(167, 243, 208, 0.25);
+        background: rgba(255, 255, 255, 0.08);
         color: #f1f5f9;
-        font-size: 1rem;
+        font-size: 1.05rem;
         cursor: pointer;
-        transition: background 0.15s;
+        transition: background 0.15s, transform 0.15s;
     }
-    .btn-refresh-icone:hover { background: var(--emerald-700); }
+    .btn-refresh-icone:hover { background: var(--emerald-700); transform: translateY(-1px); }
+    .btn-refresh-icone:active { transform: translateY(0); }
 
     main {
-        max-width: 1500px;
+        max-width: 1440px;
         margin: 0 auto;
-        padding: 20px 20px 48px;
+        padding: 22px 32px 56px;
     }
 
     /* ── Filtros ── */
@@ -111,19 +143,19 @@
         display: flex;
         flex-wrap: wrap;
         align-items: flex-end;
-        gap: 14px;
+        gap: 12px 16px;
         background: #ffffff;
         border: 1px solid var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
-        padding: 14px 18px;
+        padding: 16px 20px;
         margin-bottom: 18px;
     }
 
     .filtro-campo {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 5px;
     }
 
     .filtro-campo label {
@@ -136,13 +168,14 @@
 
     .filtro-campo input,
     .filtro-campo select {
-        border: 1px solid #dbe2df;
-        border-radius: 8px;
-        padding: 7px 10px;
+        border: 1px solid #d8e3dd;
+        border-radius: 10px;
+        padding: 8px 12px;
+        min-height: 38px;
         font-size: 0.8rem;
         font-family: inherit;
         color: var(--text-primary);
-        background: #fafcfb;
+        background: #fbfdfc;
         outline: none;
         transition: border-color 0.15s, box-shadow 0.15s;
     }
@@ -156,37 +189,46 @@
     .filtro-periodo { display: flex; align-items: center; gap: 8px; }
     .filtro-periodo span { font-size: 0.75rem; color: var(--text-secondary); }
 
+    /* No desktop os botões continuam soltos dentro de ".filtros" como sempre —
+       esse wrapper só ganha layout próprio no celular (barra fixa no rodapé). */
+    .filtros-acoes { display: contents; }
+
     .btn-atualizar {
-        background: var(--emerald-600);
+        background: linear-gradient(135deg, var(--emerald-600), var(--emerald-700));
         color: #fff;
         border: none;
-        border-radius: 8px;
-        padding: 9px 18px;
+        border-radius: 10px;
+        padding: 10px 20px;
+        min-height: 38px;
         font-size: 0.8rem;
         font-weight: 700;
         font-family: inherit;
         cursor: pointer;
-        transition: background 0.15s;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28);
+        transition: filter 0.15s, transform 0.15s, box-shadow 0.15s;
     }
 
-    .btn-atualizar:hover { background: var(--emerald-700); }
-    .btn-atualizar:disabled { background: #bfe3d3; cursor: not-allowed; }
+    .btn-atualizar:hover { filter: brightness(1.07); transform: translateY(-1px); }
+    .btn-atualizar:active { transform: translateY(0); }
+    .btn-atualizar:disabled { background: #bfe3d3; box-shadow: none; filter: none; transform: none; cursor: not-allowed; }
 
     .btn-imprimir {
         background: #fff;
         color: var(--emerald-700);
-        border: 1px solid var(--emerald-600);
-        border-radius: 8px;
-        padding: 9px 18px;
+        border: 1px solid #cfe0d8;
+        border-radius: 10px;
+        padding: 10px 18px;
+        min-height: 38px;
         font-size: 0.8rem;
         font-weight: 700;
         font-family: inherit;
         cursor: pointer;
-        transition: background 0.15s, color 0.15s;
+        transition: background 0.15s, border-color 0.15s, transform 0.15s;
     }
 
-    .btn-imprimir:hover { background: var(--emerald-50); }
-    .btn-imprimir:disabled { color: #94a3b8; border-color: #cbd5e1; cursor: not-allowed; }
+    .btn-imprimir:hover { background: var(--emerald-50); border-color: var(--emerald-500); transform: translateY(-1px); }
+    .btn-imprimir:active { transform: translateY(0); }
+    .btn-imprimir:disabled { color: #94a3b8; border-color: #cbd5e1; transform: none; cursor: not-allowed; }
 
     /* ── Seções ── */
     .secao { margin-bottom: 18px; }
@@ -194,9 +236,12 @@
     .card {
         background: #ffffff;
         border: 1px solid var(--card-border);
-        border-radius: 16px;
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         padding: 20px 22px;
+        /* Item de flex/grid tem min-width:auto por padrão — sem zerar isso, um card com
+           conteúdo largo (gráfico, tabela) não encolhe e vaza pra fora da tela no celular. */
+        min-width: 0;
     }
 
     .card-titulo {
@@ -212,8 +257,9 @@
         width: 10px;
         height: 10px;
         border-radius: 3px;
-        background: var(--emerald-600);
+        background: linear-gradient(135deg, var(--emerald-500), var(--emerald-700));
         display: inline-block;
+        flex-shrink: 0;
     }
 
     .card-titulo-row {
@@ -231,14 +277,28 @@
 
     /* ── Cards de estatística (linha principal) ── */
     .stats-principais {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
         gap: 14px;
     }
 
     .stat-card {
-        flex: 1 1 160px;
+        position: relative;
+        overflow: hidden;
     }
+
+    /* Filete verde no topo de cada card de número, pra dar identidade à linha. */
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--emerald-500), var(--emerald-700));
+    }
+
+    /* No modal Resumo os stat-cards ficam dentro de um card branco único —
+       ali o filete viraria uma listra solta no meio do nada. */
+    .resumo-stats .stat-card::before { content: none; }
 
     .stat-label {
         font-size: 0.68rem;
@@ -250,10 +310,13 @@
     }
 
     .stat-valor {
-        font-size: 1.5rem;
+        font-size: 1.6rem;
         font-weight: 800;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
         color: var(--text-primary);
         margin-bottom: 8px;
+        overflow-wrap: break-word;
     }
 
     .stat-tag {
@@ -280,36 +343,47 @@
 
     .meta-gauge {
         position: relative;
-        height: 32px;
-        background: var(--emerald-50);
-        border-radius: 8px;
+        height: 36px;
+        background: #e7f2ed;
+        border-radius: 999px;
         overflow: hidden;
+        box-shadow: inset 0 1px 3px rgba(6, 45, 34, 0.08);
     }
 
     .meta-gauge-fill {
         height: 100%;
         display: flex;
         align-items: center;
-        padding-left: 10px;
+        padding-left: 14px;
         color: #fff;
         font-weight: 800;
         font-size: 0.85rem;
-        border-radius: 8px;
+        border-radius: 999px;
         white-space: nowrap;
-        transition: width 0.3s, background 0.3s;
+        transition: width 0.4s ease, background 0.3s;
     }
 
     .insight-item {
         display: flex;
         gap: 10px;
-        align-items: flex-start;
+        align-items: center;
         padding: 9px 0;
         border-bottom: 1px solid #eef1f0;
         font-size: 0.82rem;
-        color: #334155;
+        color: #33443c;
     }
     .insight-item:last-child { border-bottom: none; }
-    .insight-icone { flex-shrink: 0; }
+    .insight-icone {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--emerald-50);
+        border: 1px solid var(--emerald-100);
+        border-radius: 10px;
+    }
 
     /* ── Gráficos ── */
     .row-charts {
@@ -342,17 +416,18 @@
     .strip-coluna { flex: 2 1 620px; }
 
     .stats-strip {
-        background: var(--forest-900);
+        background: linear-gradient(135deg, var(--forest-950), var(--forest-900) 55%, #07523e);
         color: #f1f5f9;
-        border-radius: 16px;
+        border: 1px solid rgba(167, 243, 208, 0.12);
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         padding: 20px 22px;
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 18px;
     }
 
-    .strip-item { flex: 1 1 140px; }
+    .strip-item { min-width: 0; }
     .strip-label {
         font-size: 0.64rem;
         color: #a7f3d0;
@@ -361,8 +436,8 @@
         font-weight: 700;
         margin-bottom: 8px;
     }
-    .strip-valor { font-size: 1.2rem; font-weight: 800; margin-bottom: 4px; }
-    .strip-sub { font-size: 0.7rem; color: #a7d8c5; }
+    .strip-valor { font-size: 1.25rem; font-weight: 800; margin-bottom: 4px; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+    .strip-sub { font-size: 0.7rem; color: #a7d8c5; overflow-wrap: break-word; }
 
     .motivo-coluna { flex: 1 1 340px; }
 
@@ -376,7 +451,9 @@
     .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.45);
+        background: rgba(6, 30, 23, 0.5);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
         display: none;
         align-items: center;
         justify-content: center;
@@ -388,8 +465,8 @@
 
     .modal-card {
         background: #ffffff;
-        border-radius: 16px;
-        box-shadow: var(--card-shadow);
+        border-radius: var(--radius);
+        box-shadow: 0 20px 60px rgba(3, 46, 35, 0.3);
         padding: 22px 24px;
         max-width: 420px;
         width: 100%;
@@ -482,22 +559,23 @@
     }
 
     .modal-resumo-header {
-        background: var(--forest-900);
+        background: linear-gradient(120deg, var(--forest-950) 0%, var(--forest-900) 55%, #086a4e 100%);
         color: #f1f5f9;
         padding: 16px 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-shrink: 0;
+        border-bottom: 1px solid rgba(167, 243, 208, 0.16);
     }
 
     .modal-resumo-titulo { font-size: 1rem; font-weight: 800; letter-spacing: 0.02em; }
 
     .modal-resumo-fechar {
-        width: 32px; height: 32px;
-        border-radius: 50%;
-        border: 1px solid #0b6b50;
-        background: #065f46;
+        width: 36px; height: 36px;
+        border-radius: 12px;
+        border: 1px solid rgba(167, 243, 208, 0.25);
+        background: rgba(255, 255, 255, 0.08);
         color: #f1f5f9;
         font-size: 0.9rem;
         cursor: pointer;
@@ -525,15 +603,27 @@
 
     /* ── Tabela + Comparativo ── */
     .row-tabela-comparativo { display: flex; flex-wrap: wrap; gap: 18px; align-items: stretch; }
+    /* min-width: 0 é essencial aqui — sem isso, um item flex nunca encolhe além do
+       conteúdo (a tabela sem quebra de linha), e o card força a página inteira a
+       rolar na horizontal em vez de deixar só a tabela rolar dentro de si mesma. */
     .detalhamento-card { flex: 2 1 620px; }
-    .comparativo-card { flex: 1 1 380px; }
+    .comparativo-card { flex: 1 1 340px; }
 
-    .tabela-wrap { overflow-x: auto; }
+    .tabela-wrap {
+        overflow-x: auto;
+        border: 1px solid #e2ece7;
+        border-radius: 12px;
+    }
+
+    /* Barras de rolagem finas e discretas nas áreas que rolam por conta própria. */
+    .tabela-wrap::-webkit-scrollbar, .legenda-motivos::-webkit-scrollbar { width: 8px; height: 8px; }
+    .tabela-wrap::-webkit-scrollbar-thumb, .legenda-motivos::-webkit-scrollbar-thumb { background: #c3d6cd; border-radius: 999px; }
+    .tabela-wrap::-webkit-scrollbar-track, .legenda-motivos::-webkit-scrollbar-track { background: transparent; }
 
     table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 
     thead th {
-        background: var(--emerald-700);
+        background: linear-gradient(180deg, var(--emerald-700), #036249);
         color: #fff;
         text-align: left;
         padding: 10px 12px;
@@ -549,9 +639,12 @@
         padding: 9px 12px;
         border-bottom: 1px solid #eef1f0;
         white-space: nowrap;
+        font-variant-numeric: tabular-nums;
     }
 
-    tbody tr:nth-child(even) { background: #f7f9f8; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) { background: #f6faf8; }
+    @media (hover: hover) { tbody tr:hover { background: #eef7f2; } }
 
     .pct-badge {
         display: inline-block;
@@ -588,11 +681,12 @@
         gap: 8px;
         background: #ffffff;
         border: 1px solid var(--card-border);
-        border-radius: 16px;
+        border-left: 4px solid var(--emerald-500);
+        border-radius: var(--radius);
         box-shadow: var(--card-shadow);
         padding: 12px 18px;
         font-size: 0.8rem;
-        color: #334155;
+        color: #33443c;
         margin-top: 18px;
     }
 
@@ -614,7 +708,7 @@
         justify-content: center;
         gap: 12px;
         background: rgba(243, 245, 244, 0.55);
-        border-radius: 16px;
+        border-radius: var(--radius);
         z-index: 5;
     }
 
@@ -654,42 +748,173 @@
         letter-spacing: 0.1em;
     }
 
-    /* ── Mobile: tudo empilha em coluna única, sem "cards órfãos" com espaço vazio ── */
-    @media (max-width: 780px) {
-        header { padding: 14px 16px; flex-direction: column; align-items: flex-start; }
-        header h1 { font-size: 0.9rem; }
-        .header-right { gap: 10px; width: 100%; justify-content: space-between; }
-        .atualizacao { text-align: left; }
+    /* ── Tablet: gráficos empilham antes do resto e as margens encolhem ── */
+    @media (max-width: 1024px) {
+        main { padding: 20px 20px 48px; }
+        .row-charts { grid-template-columns: 1fr; }
+    }
 
-        main { padding: 14px 12px 32px; }
+    /* ── Mobile: layout de app — números em grade de 2 colunas (metade do scroll),
+       filtros em grade, barra de ações fixa no rodapé e alvos de toque de 44px+ ── */
+    @media (max-width: 780px) {
+        header { padding: 12px 14px; row-gap: 10px; }
+        header img { width: 36px; height: 36px; border-radius: 10px; }
+        header h1 { font-size: 0.9rem; }
+        .header-left, .header-right { min-width: 0; }
+        .header-right { gap: 10px; width: 100%; justify-content: space-between; }
+        .atualizacao { text-align: left; padding: 5px 10px; }
+        .atualizacao-valor { font-size: 0.72rem; }
+
+        /* Espaço extra embaixo pra nada ficar escondido atrás da barra fixa de ações
+           (inclusive em telas com gesto de home, via safe-area). */
+        main { padding: 14px 12px calc(92px + env(safe-area-inset-bottom)); }
+
+        .secao { margin-bottom: 12px; }
+        .card { padding: 14px; border-radius: 14px; }
+        .filtros { margin-bottom: 12px; }
+        .footer-info { margin-top: 12px; }
 
         .card-titulo-row { flex-direction: column; align-items: flex-start; gap: 2px; }
-        .card-titulo, .card-caption, .destaque-dia, .header-left, .header-right { min-width: 0; overflow-wrap: break-word; }
+        .card-titulo, .card-caption, .destaque-dia { min-width: 0; overflow-wrap: break-word; }
 
-        .filtros { flex-direction: column; align-items: stretch; gap: 10px; }
-        .filtro-periodo { flex-direction: column; align-items: stretch; gap: 6px; }
+        /* Filtros em grade de 2 colunas — o campo de período ocupa a linha inteira,
+           com as duas datas lado a lado, e os botões avulsos ocupam a linha toda. */
+        .filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; padding: 14px; }
+        .filtro-campo:has(.filtro-periodo) { grid-column: 1 / -1; }
+        .filtros > .btn-atualizar, .filtros > .btn-imprimir { grid-column: 1 / -1; }
         .filtro-periodo span { display: none; }
-        .filtro-periodo input, .filtro-campo select { width: 100%; }
-        .btn-atualizar, .btn-imprimir { width: 100%; text-align: center; }
+        .filtro-periodo input { flex: 1; min-width: 0; }
+        .filtro-campo input, .filtro-campo select, .modal-campo input {
+            width: 100%;
+            /* 16px evita o zoom automático do iOS ao tocar no campo */
+            font-size: 16px;
+            min-height: 46px;
+        }
+        .btn-atualizar, .btn-imprimir { width: 100%; text-align: center; min-height: 46px; }
 
-        .stats-principais { flex-direction: column; }
-        .stat-card { flex: 1 1 auto; }
+        /* ── Ações do painel principal viram uma barra fixa no rodapé, estilo app
+           mobile, em vez de ficarem empilhadas dentro do card de filtros. Os botões
+           viram pílulas que encolhem pro conteúdo e a barra rola na horizontal. ── */
+        .filtros-acoes {
+            display: flex;
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            gap: 8px;
+            padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--card-border);
+            box-shadow: 0 -6px 24px rgba(6, 45, 34, 0.14);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            z-index: 40;
+        }
+        .filtros-acoes::-webkit-scrollbar { display: none; }
 
-        .row-meta-insights { flex-direction: column; }
+        .filtros-acoes .btn-atualizar,
+        .filtros-acoes .btn-imprimir {
+            width: auto;
+            flex: 0 0 auto;
+            white-space: nowrap;
+            padding: 10px 16px;
+            font-size: 0.76rem;
+            min-height: 44px;
+            border-radius: 999px;
+        }
+
+        /* Números principais em 2 colunas — metade do scroll da coluna única. */
+        .stats-principais { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .stat-label { font-size: 0.6rem; }
+        .stat-valor { font-size: 1.15rem; }
+        .stat-tag { font-size: 0.62rem; padding: 3px 8px; }
+
+        .row-meta-insights { flex-direction: column; gap: 12px; }
         .meta-card, .insights-card { flex: 1 1 auto; }
 
-        .row-charts { grid-template-columns: 1fr; }
-        .chart-box.alto { height: 280px; }
+        /* Gráficos menores e mais compactos no celular — cards pequenos, fáceis de
+           ler sem precisar de muito scroll pra passar por cada um. */
+        .row-charts { grid-template-columns: 1fr; gap: 12px; }
+        .chart-box { height: 220px; }
+        .chart-box.alto { height: 250px; }
+        .chart-box.donut { height: 170px; }
 
-        .row-strip-motivo { flex-direction: column; }
-        .strip-coluna, .motivo-coluna { flex: 1 1 auto; }
-        .strip-item { flex: 1 1 100%; }
-        .strip-label, .strip-sub { overflow-wrap: break-word; }
+        .row-strip-motivo { flex-direction: column; gap: 12px; }
+        .strip-coluna, .motivo-coluna { flex: 1 1 auto; gap: 12px; }
+        .stats-strip { grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 16px; }
+        .strip-valor { font-size: 1rem; }
 
-        .row-tabela-comparativo { flex-direction: column; }
+        .row-tabela-comparativo { flex-direction: column; gap: 12px; }
         .detalhamento-card, .comparativo-card { flex: 1 1 auto; }
 
-        .card { padding: 16px 16px; }
+        /* Tabelas de Detalhamento e Comparativo rolam dentro de si mesmas no celular,
+           em vez de esticar a tela toda pra baixo — cabeçalho fica fixo durante o scroll. */
+        .detalhamento-card .tabela-wrap,
+        .comparativo-card .tabela-wrap {
+            max-height: 340px;
+            overflow-y: auto;
+        }
+        .detalhamento-card thead th,
+        .comparativo-card thead th {
+            position: sticky;
+            top: 0;
+        }
+
+        /* ── Modais ── */
+        .modal-overlay { padding: 14px; }
+        .modal-card { padding: 18px; }
+
+        .modal-resumo-header { padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); }
+        .modal-resumo-titulo { font-size: 0.85rem; }
+        .modal-resumo-corpo { padding: 12px; }
+        .resumo-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px; }
+        .resumo-stats .stat-valor { font-size: 0.95rem; }
+        .resumo-filtros { gap: 10px; }
+
+        /* ── Alvos de toque maiores nos botões de ícone (padrão mínimo de 44px) ── */
+        .btn-refresh-icone, .modal-resumo-fechar { width: 44px; height: 44px; font-size: 1.05rem; }
+
+        /* ── Tabelas: mais compactas e com a 1ª coluna fixa durante o scroll
+           horizontal, pra não perder a referência de qual linha é qual. ── */
+        table { font-size: 0.72rem; }
+        thead th { padding: 8px 8px; }
+        tbody td { padding: 8px 8px; }
+
+        thead th:first-child, tbody td:first-child {
+            position: sticky;
+            left: 0;
+        }
+        thead th:first-child { z-index: 2; }
+        tbody td:first-child { z-index: 1; }
+        tbody tr:nth-child(odd) td:first-child { background: #ffffff; }
+        tbody tr:nth-child(even) td:first-child { background: #f6faf8; }
+        .tabela-comparativo tbody tr.linha-atual td:first-child { background: var(--emerald-50); }
+
+        /* Dica visual de que dá pra arrastar a tabela pro lado: sombra + seta na borda
+           direita, sempre visível (não é só sutil demais pra notar). */
+        .tabela-wrap { position: relative; }
+        .tabela-wrap::after {
+            content: '›';
+            position: absolute;
+            top: 0; right: 0; bottom: 0;
+            width: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 3px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: rgba(6, 78, 59, 0.45);
+            background: linear-gradient(to right, transparent, rgba(243, 245, 244, 0.95) 60%);
+            pointer-events: none;
+        }
+    }
+
+    /* ── Telas bem estreitas: só ajustes finos de tamanho ── */
+    @media (max-width: 380px) {
+        .stats-principais { gap: 8px; }
+        .stat-valor { font-size: 1.05rem; }
+        .filtros-acoes .btn-atualizar, .filtros-acoes .btn-imprimir { padding: 10px 12px; font-size: 0.72rem; }
     }
 </style>
 </head>
@@ -769,6 +994,7 @@
                         <input type="date" id="resumoColheitaAte">
                     </div>
                 </div>
+                <button class="btn-atualizar" id="btnAtualizarResumo" type="button">Atualizar ⟳</button>
                 <button class="btn-imprimir" id="btnLimparFiltrosResumo" type="button">✖️ Limpar</button>
                 <button class="btn-imprimir" id="btnCapturarResumo" type="button">📸 Capturar Página (HD)</button>
             </div>
@@ -833,12 +1059,15 @@
             <label for="filtroMotivo">Motivo</label>
             <select id="filtroMotivo"><option value="">Todos</option></select>
         </div>
-        <button class="btn-atualizar" id="btnAtualizar">Atualizar ⟳</button>
-        <button class="btn-imprimir" id="btnLimparFiltros" type="button">✖️ Limpar Filtros</button>
-        <button class="btn-imprimir" id="btnImprimir" type="button">🖨️ Imprimir Relatório</button>
-        <button class="btn-imprimir" id="btnRotulos" type="button">🏷️ Mostrar Rótulos</button>
-        <button class="btn-imprimir" id="btnCapturar" type="button">📸 Capturar Página (HD)</button>
-        <button class="btn-imprimir" id="btnResumo" type="button">📋 Resumo</button>
+        <div class="filtros-acoes">
+            <button class="btn-atualizar" id="btnAtualizar">Atualizar ⟳</button>
+            <button class="btn-imprimir" id="btnLimparFiltros" type="button">✖️ Limpar Filtros</button>
+            <button class="btn-imprimir" id="btnLimparCache" type="button" title="Apaga o histórico salvo neste navegador e recarrega tudo do zero">🗑️ Limpar Cache</button>
+            <button class="btn-imprimir" id="btnImprimir" type="button">🖨️ Imprimir Relatório</button>
+            <button class="btn-imprimir" id="btnRotulos" type="button">🏷️ Mostrar Rótulos</button>
+            <button class="btn-imprimir" id="btnCapturar" type="button">📸 Capturar Página (HD)</button>
+            <button class="btn-imprimir" id="btnResumo" type="button">📋 Resumo</button>
+        </div>
     </div>
 
     <div id="conteudo">
@@ -852,6 +1081,12 @@
     // ── URLs das duas Web Apps (Apps Script vinculado a cada planilha) ──
     const APPS_SCRIPT_URL_DESCARTE = 'https://script.google.com/macros/s/AKfycbz4VOMt8Xx1f0R2C2if2rbN43M8-c9tG4GieOPNdkP9GUHS_lni5m78v_AemXGxVuvm/exec';
     const APPS_SCRIPT_URL_PRODUCAO = 'https://script.google.com/macros/s/AKfycbzUUyvG9wlQnvIQTM5jCrDxBH3wGSaA8gG2GM36PSgACfi84YX6uBYgqmNnU1NCfJrQhw/exec';
+
+    // Busca só o ano corrente: reduz o volume de linhas que o Apps Script devolve,
+    // deixando a carga mais rápida e menos sujeita a erro de conexão/timeout.
+    const ANO_HISTORICO_INICIO = new Date().getFullYear();
+    const URL_DESCARTE_HISTORICO = `${APPS_SCRIPT_URL_DESCARTE}?dataInicio=${ANO_HISTORICO_INICIO}-01-01&dataFim=${ANO_HISTORICO_INICIO}-12-31`;
+    const URL_PRODUCAO_HISTORICO = `${APPS_SCRIPT_URL_PRODUCAO}?dataInicio=${ANO_HISTORICO_INICIO}-01-01&dataFim=${ANO_HISTORICO_INICIO}-12-31`;
 
     const META_LIMITE = 5;       // % máximo de descarte considerado ideal
     const NUM_PERIODOS = 6;      // quantidade de janelas no comparativo (incluindo a atual)
@@ -880,9 +1115,33 @@
     let ultimasLinhasResumo = [];
     let ordenacaoResumoAsc = false;
 
+    const BRAND_LOGO_URL = 'https://i.imgur.com/AHcNvib.png';
+
+    // Configura os ícones do site e o manifest de PWA (o que permite "Instalar app"
+    // no celular/desktop), tudo reaproveitando o mesmo logo já usado no cabeçalho.
     function applyBrandAssets() {
         const favicon = document.getElementById('siteFavicon');
-        if (favicon) { favicon.href = 'https://i.imgur.com/AHcNvib.png'; favicon.type = 'image/png'; }
+        const appleTouchIcon = document.getElementById('siteAppleTouchIcon');
+        const manifestLink = document.getElementById('siteManifest');
+
+        if (favicon) { favicon.href = BRAND_LOGO_URL; favicon.type = 'image/png'; }
+        if (appleTouchIcon) appleTouchIcon.href = BRAND_LOGO_URL;
+
+        if (manifestLink) {
+            const manifest = {
+                name: 'SPG Sede - Painel de Descarte',
+                short_name: 'SPG Sede',
+                start_url: '.',
+                display: 'standalone',
+                background_color: '#f3f5f4',
+                theme_color: '#064e3b',
+                icons: [
+                    { src: BRAND_LOGO_URL, sizes: '192x192', type: 'image/png' },
+                    { src: BRAND_LOGO_URL, sizes: '512x512', type: 'image/png' }
+                ]
+            };
+            manifestLink.href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
+        }
     }
 
     // ── Formatação ──
@@ -928,6 +1187,41 @@
 
     function normalizarTexto(str) {
         return String(str).toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    // Sítio Rafael e Sítio Reginaldo são o mesmo parceiro na prática — unifica os dois
+    // sob o nome "Sítio Leitão" em toda a base antes de filtrar/agregar qualquer coisa.
+    const PARCEIROS_UNIFICADOS = {
+        [normalizarTexto('Sítio Rafael')]: 'Sítio Leitão',
+        [normalizarTexto('Sítio Reginaldo')]: 'Sítio Leitão'
+    };
+
+    function unificarParceiro(nome) {
+        return PARCEIROS_UNIFICADOS[normalizarTexto(nome)] || nome;
+    }
+
+    // Depois de unificar Sítio Rafael/Reginaldo em Sítio Leitão, o mesmo lançamento pode
+    // ter sido registrado uma vez para cada nome antigo — remove essa duplicata exata
+    // (mesmo ID, data, hora, motivo e peso) pra não contar o mesmo descarte duas vezes.
+    function removerDescartesDuplicados(lista) {
+        const vistos = new Set();
+        return lista.filter(r => {
+            const chave = [r.idExclusivo, r.data, r.horaDescarte, r.parceiro, r.motivo, r.classe, r.descartadoKg].join('|');
+            if (vistos.has(chave)) return false;
+            vistos.add(chave);
+            return true;
+        });
+    }
+
+    function aplicarUnificacaoParceiros(json) {
+        if (!json) return json;
+        if (Array.isArray(json.descarte)) {
+            json.descarte.forEach(r => { r.parceiro = unificarParceiro(r.parceiro); });
+            json.descarte = removerDescartesDuplicados(json.descarte);
+        }
+        if (Array.isArray(json.producao)) json.producao.forEach(r => { if (r.parceiro) r.parceiro = unificarParceiro(r.parceiro); });
+        if (Array.isArray(json.parceiros)) json.parceiros = [...new Set(json.parceiros.map(unificarParceiro))].sort();
+        return json;
     }
 
     function juntarComE(itens) {
@@ -981,11 +1275,15 @@
             producaoPorData[r.data] = (producaoPorData[r.data] || 0) + r.producaoKg;
         });
 
-        const producaoPorParceiroData = {};
+        // Produção de referência de cada parceiro dentro do período filtrado (não por dia
+        // específico): produção e descarte nem sempre são lançados na planilha no mesmo
+        // dia, então casar por data é frágil — casar só por parceiro é mais confiável e
+        // bate com o total mostrado no resumo do período.
+        const producaoPorParceiro = {};
         producaoRows.forEach(r => {
             if (!r.parceiro) return;
-            const chave = normalizarTexto(r.parceiro) + '|' + r.data;
-            producaoPorParceiroData[chave] = (producaoPorParceiroData[chave] || 0) + r.producaoKg;
+            const chave = normalizarTexto(r.parceiro);
+            producaoPorParceiro[chave] = (producaoPorParceiro[chave] || 0) + r.producaoKg;
         });
 
         const descartePorData = {};
@@ -1087,13 +1385,10 @@
             return { diaSemana: nome, kg, percentual: descarteTotal ? (kg / descarteTotal * 100) : 0 };
         });
 
-        // % da linha relativo à produção do parceiro no dia em que a colheita ocorreu
-        // (não no dia do descarte, que pode ser posterior) — ou, quando a produção não é
-        // quebrada por parceiro, à produção total do dia da colheita.
+        // % da linha relativo à produção total do parceiro no período filtrado.
         const tabela = descarteRows
             .map(r => {
-                const chaveParceiroData = normalizarTexto(r.parceiro) + '|' + r.dataColheita;
-                const producaoRef = producaoPorParceiroData[chaveParceiroData] || producaoPorData[r.dataColheita] || 0;
+                const producaoRef = producaoPorParceiro[normalizarTexto(r.parceiro)] || producaoTotal || 0;
                 return {
                     data: r.data,
                     parceiro: r.parceiro,
@@ -1423,7 +1718,9 @@
         const gaugeFill = document.getElementById('metaGaugeFill');
         const largura = dentroDoIdeal ? 100 : Math.min(100, (dados.percentualDescarte / META_LIMITE) * 100);
         gaugeFill.style.width = `${largura}%`;
-        gaugeFill.style.background = dentroDoIdeal ? '#059669' : '#e11d48';
+        gaugeFill.style.background = dentroDoIdeal
+            ? 'linear-gradient(90deg, #10b981, #047857)'
+            : 'linear-gradient(90deg, #fb7185, #e11d48)';
         gaugeFill.textContent = formatarPct(dados.percentualDescarte);
 
         document.getElementById('insightsLista').innerHTML = gerarInsights(dados, META_LIMITE).map(i => `
@@ -1838,8 +2135,8 @@
         <tbody>${linhasDiaSemana}</tbody>
     </table>
     ${secaoDicasIA}
-</body>
-</html>`;
+<\/body>
+<\/html>`;
     }
 
     function imprimirRelatorio() {
@@ -1864,6 +2161,16 @@
         const textoOriginal = btn.textContent;
         btn.disabled = true;
         btn.textContent = '📸 Gerando imagem...';
+
+        // Esconde a barra de título e a barra de filtros durante a captura, pra não
+        // aparecerem na imagem.
+        const header = document.querySelector('header');
+        const filtros = document.querySelector('main .filtros');
+        const exibicaoHeaderOriginal = header.style.display;
+        const exibicaoFiltrosOriginal = filtros.style.display;
+        header.style.display = 'none';
+        filtros.style.display = 'none';
+
         try {
             const canvas = await html2canvas(document.body, {
                 scale: 3,
@@ -1879,6 +2186,8 @@
         } catch {
             alert('Não foi possível gerar a captura da página.');
         } finally {
+            header.style.display = exibicaoHeaderOriginal;
+            filtros.style.display = exibicaoFiltrosOriginal;
             btn.disabled = false;
             btn.textContent = textoOriginal;
         }
@@ -1890,14 +2199,27 @@
         const btn = document.getElementById('btnCapturarResumo');
         const painel = document.querySelector('.modal-resumo-painel');
         const corpo = document.querySelector('.modal-resumo-corpo');
+        const header = document.querySelector('.modal-resumo-header');
+        const filtros = document.querySelector('.resumo-filtros');
         const textoOriginal = btn.textContent;
         const overflowOriginal = corpo.style.overflowY;
         const alturaOriginal = corpo.style.maxHeight;
+        const alturaPainelOriginal = painel.style.height;
+        const exibicaoHeaderOriginal = header.style.display;
+        const exibicaoFiltrosOriginal = filtros.style.display;
 
         btn.disabled = true;
         btn.textContent = '📸 Gerando imagem...';
         corpo.style.overflowY = 'visible';
         corpo.style.maxHeight = 'none';
+        // .modal-resumo-painel tem "height: 100%" fixo (limitado à tela) — sem liberar
+        // isso aqui, o painel nunca cresce pra caber a tabela inteira e a captura corta
+        // o conteúdo abaixo da dobra.
+        painel.style.height = 'auto';
+        // Mesma regra da captura da outra aba: esconde barra de título e de filtros
+        // durante a captura, pra não aparecerem na imagem.
+        header.style.display = 'none';
+        filtros.style.display = 'none';
 
         try {
             const canvas = await html2canvas(painel, {
@@ -1916,6 +2238,9 @@
         } finally {
             corpo.style.overflowY = overflowOriginal;
             corpo.style.maxHeight = alturaOriginal;
+            painel.style.height = alturaPainelOriginal;
+            header.style.display = exibicaoHeaderOriginal;
+            filtros.style.display = exibicaoFiltrosOriginal;
             btn.disabled = false;
             btn.textContent = textoOriginal;
         }
@@ -2034,20 +2359,19 @@
         document.getElementById('resumoStatDescarte').textContent = formatarKg(dados.descarteTotal);
         document.getElementById('resumoStatPercentual').textContent = formatarPct(dados.percentualDescarte);
 
-        // Produção individual de cada lançamento: junta pelo parceiro + dia da COLHEITA
-        // (não o dia do descarte), já que é nesse dia que a produção foi de fato registrada.
-        const producaoPorParceiroData = {};
-        const producaoPorData = {};
-        producaoCompleto.forEach(r => {
-            producaoPorData[r.data] = (producaoPorData[r.data] || 0) + r.producaoKg;
+        // Produção de referência de cada linha: soma da produção do parceiro dentro do
+        // período/filtros ativos (mesmo total do card "Produção Total" acima) — produção
+        // e descarte nem sempre são lançados na planilha no mesmo dia, então casar por
+        // parceiro é mais confiável do que tentar casar por data.
+        const producaoPorParceiro = {};
+        producaoFiltrada.forEach(r => {
             if (!r.parceiro) return;
-            const chave = normalizarTexto(r.parceiro) + '|' + r.data;
-            producaoPorParceiroData[chave] = (producaoPorParceiroData[chave] || 0) + r.producaoKg;
+            const chave = normalizarTexto(r.parceiro);
+            producaoPorParceiro[chave] = (producaoPorParceiro[chave] || 0) + r.producaoKg;
         });
 
         ultimasLinhasResumo = descarteFiltrado.map(r => {
-            const chave = normalizarTexto(r.parceiro) + '|' + r.dataColheita;
-            const producaoRef = producaoPorParceiroData[chave] || producaoPorData[r.dataColheita] || 0;
+            const producaoRef = producaoPorParceiro[normalizarTexto(r.parceiro)] || dados.producaoTotal || 0;
             const percentual = producaoRef ? (r.descartadoKg / producaoRef * 100) : 0;
             return {
                 idExclusivo: r.idExclusivo,
@@ -2223,8 +2547,20 @@ ${listaCombos}`;
         } catch { /* localStorage cheio ou indisponível — segue sem cache */ }
     }
 
+    // Apaga todo cache salvo (de qualquer ano/URL, não só o atual) e recarrega a página
+    // do zero — útil quando algo não bate e se quer garantir uma varredura completa.
+    function limparCacheLocal() {
+        Object.keys(localStorage)
+            .filter(chave => chave.startsWith('cache_'))
+            .forEach(chave => localStorage.removeItem(chave));
+        location.reload();
+    }
+
+    // Evita que o navegador (ou algum proxy no meio do caminho) sirva uma resposta
+    // antiga em cache HTTP: URL com carimbo único a cada chamada + "no-store".
     async function buscarJson(url) {
-        const res = await fetch(url);
+        const separador = url.includes('?') ? '&' : '?';
+        const res = await fetch(`${url}${separador}_=${Date.now()}`, { cache: 'no-store' });
         return res.json();
     }
 
@@ -2297,13 +2633,15 @@ ${listaCombos}`;
         const primeiraCarga = !document.getElementById('painelDashboard');
         if (primeiraCarga) montarLayout();
 
-        const cacheDescarte = lerCache(APPS_SCRIPT_URL_DESCARTE);
-        const cacheProducao = lerCache(APPS_SCRIPT_URL_PRODUCAO);
+        const cacheDescarte = lerCache(URL_DESCARTE_HISTORICO);
+        const cacheProducao = lerCache(URL_PRODUCAO_HISTORICO);
         const temCache = cacheDescarte && cacheProducao;
 
         // Cache-first: mostra o histórico já guardado na hora, sem spinner, e só
         // então revalida em segundo plano (ou na hora, se "forcar" foi pedido).
         if (temCache) {
+            aplicarUnificacaoParceiros(cacheDescarte.dados);
+            aplicarUnificacaoParceiros(cacheProducao.dados);
             descarteCompleto = cacheDescarte.dados.descarte;
             producaoCompleto = cacheProducao.dados.producao;
             preencherFiltros(cacheDescarte.dados);
@@ -2313,17 +2651,24 @@ ${listaCombos}`;
         const cacheFresco = temCache && !cacheDescarte.expirado && !cacheProducao.expirado;
         if (cacheFresco && !forcar) return;
 
+        // Feedback visual sempre que uma busca de verdade está em andamento (com ou sem
+        // cache), pra deixar claro que o clique em Atualizar não travou — o botão vai
+        // contando os segundos enquanto espera a resposta do Apps Script.
         const btn = document.getElementById('btnAtualizar');
-        if (!temCache) {
-            btn.disabled = true;
-            btn.textContent = 'Atualizando…';
-            exibirCarregando(true);
-        }
+        btn.disabled = true;
+        const inicioBusca = Date.now();
+        const atualizarContador = () => {
+            if (minhaSequencia !== sequenciaCarga) return;
+            btn.textContent = `Atualizando… (${Math.floor((Date.now() - inicioBusca) / 1000)}s)`;
+        };
+        atualizarContador();
+        const tickerBtn = setInterval(atualizarContador, 1000);
+        if (!temCache) exibirCarregando(true);
 
         try {
             const [jsonDescarte, jsonProducao] = await Promise.all([
-                buscarJson(APPS_SCRIPT_URL_DESCARTE),
-                buscarJson(APPS_SCRIPT_URL_PRODUCAO)
+                buscarJson(URL_DESCARTE_HISTORICO),
+                buscarJson(URL_PRODUCAO_HISTORICO)
             ]);
 
             if (!jsonDescarte.ok || !jsonProducao.ok) {
@@ -2333,8 +2678,11 @@ ${listaCombos}`;
                 return;
             }
 
-            salvarCache(APPS_SCRIPT_URL_DESCARTE, jsonDescarte);
-            salvarCache(APPS_SCRIPT_URL_PRODUCAO, jsonProducao);
+            aplicarUnificacaoParceiros(jsonDescarte);
+            aplicarUnificacaoParceiros(jsonProducao);
+
+            salvarCache(URL_DESCARTE_HISTORICO, jsonDescarte);
+            salvarCache(URL_PRODUCAO_HISTORICO, jsonProducao);
 
             if (minhaSequencia !== sequenciaCarga) return; // uma requisição mais nova já está em andamento
 
@@ -2347,8 +2695,9 @@ ${listaCombos}`;
                 mostrarErroCarregamento('Erro de conexão. Verifique as URLs do Apps Script.', primeiraCarga);
             }
         } finally {
-            if (minhaSequencia === sequenciaCarga && !temCache) {
-                exibirCarregando(false);
+            clearInterval(tickerBtn);
+            if (minhaSequencia === sequenciaCarga) {
+                if (!temCache) exibirCarregando(false);
                 btn.disabled = false;
                 btn.textContent = 'Atualizar ⟳';
             }
@@ -2357,6 +2706,7 @@ ${listaCombos}`;
 
     document.getElementById('btnAtualizar').addEventListener('click', () => carregarDadosCompletos(true));
     document.getElementById('btnLimparFiltros').addEventListener('click', limparFiltros);
+    document.getElementById('btnLimparCache').addEventListener('click', limparCacheLocal);
     ['filtroDe', 'filtroAte', 'filtroParceiro', 'filtroClasse', 'filtroMotivo'].forEach(id => {
         document.getElementById(id).addEventListener('change', aplicarFiltros);
     });
@@ -2377,6 +2727,23 @@ ${listaCombos}`;
 
     document.getElementById('btnResumo').addEventListener('click', abrirModalResumo);
     document.getElementById('btnFecharResumo').addEventListener('click', fecharModalResumo);
+    document.getElementById('btnAtualizarResumo').addEventListener('click', async () => {
+        const btn = document.getElementById('btnAtualizarResumo');
+        btn.disabled = true;
+        const inicioBusca = Date.now();
+        const tickerBtn = setInterval(() => {
+            btn.textContent = `Atualizando… (${Math.floor((Date.now() - inicioBusca) / 1000)}s)`;
+        }, 1000);
+        btn.textContent = 'Atualizando… (0s)';
+        try {
+            await carregarDadosCompletos(true);
+            aplicarFiltrosResumo();
+        } finally {
+            clearInterval(tickerBtn);
+            btn.disabled = false;
+            btn.textContent = 'Atualizar ⟳';
+        }
+    });
     document.getElementById('btnLimparFiltrosResumo').addEventListener('click', limparFiltrosResumo);
     document.getElementById('btnCapturarResumo').addEventListener('click', capturarResumo);
     ['resumoFiltroClasse', 'resumoFiltroParceiro', 'resumoFiltroMotivo', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte'].forEach(id => {
