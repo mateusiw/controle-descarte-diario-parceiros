@@ -1024,6 +1024,7 @@
                                 <th class="sortavel" id="thResumoData">DT Descarte ▽</th>
                                 <th>Parceiro</th>
                                 <th>Motivo</th>
+                                <th>Cultura</th>
                                 <th>Produção (kg)</th>
                                 <th>Descarte (kg)</th>
                                 <th>% Descarte</th>
@@ -2393,6 +2394,7 @@
                 horaDescarte: r.horaDescarte,
                 parceiro: r.parceiro,
                 motivo: r.motivo,
+                classe: r.classe,
                 producaoKg: producaoRef,
                 descartadoKg: r.descartadoKg,
                 percentual
@@ -2418,11 +2420,12 @@
                 <td>${formatarDataBarra(r.dataDescarte)} ${r.horaDescarte}</td>
                 <td>${r.parceiro || '—'}</td>
                 <td>${r.motivo || '—'}</td>
+                <td>${r.classe || '—'}</td>
                 <td>${Number(r.producaoKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
                 <td>${Number(r.descartadoKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
                 <td><span class="pct-badge" style="background:${corPct(r.percentual)}">${formatarPct(r.percentual)}</span></td>
             </tr>
-        `).join('') || '<tr><td colspan="8" style="text-align:center;">Sem registros para os filtros selecionados.</td></tr>';
+        `).join('') || '<tr><td colspan="9" style="text-align:center;">Sem registros para os filtros selecionados.</td></tr>';
     }
 
     // Gera dicas práticas de como evitar os principais motivos de descarte (cruzados com a
