@@ -964,7 +964,7 @@
             <div class="filtros resumo-filtros">
                 <div class="filtro-campo">
                     <label for="resumoFiltroId">ID</label>
-                    <input type="text" id="resumoFiltroId" placeholder="Buscar por ID...">
+                    <select id="resumoFiltroId"><option value="">Todos</option></select>
                 </div>
                 <div class="filtro-campo">
                     <label for="resumoFiltroClasse">Cultura</label>
@@ -2288,22 +2288,35 @@
         document.getElementById('modalResumo').classList.remove('aberto');
     }
 
+    function preencherSelectResumo(select, opcoes, textoTodos) {
+        const valorAtual = select.value;
+        select.replaceChildren();
+
+        const optTodos = document.createElement('option');
+        optTodos.value = '';
+        optTodos.textContent = textoTodos;
+        select.appendChild(optTodos);
+
+        opcoes.forEach(valor => {
+            const opt = document.createElement('option');
+            opt.value = valor;
+            opt.textContent = valor;
+            select.appendChild(opt);
+        });
+
+        select.value = opcoes.includes(valorAtual) ? valorAtual : '';
+    }
+
     function popularFiltrosResumo() {
-        const selClasse = document.getElementById('resumoFiltroClasse');
-        if (selClasse.dataset.preenchido) return;
-
-        const selParceiro = document.getElementById('resumoFiltroParceiro');
-        const selMotivo = document.getElementById('resumoFiltroMotivo');
-
+        const ids = [...new Set(descarteCompleto.map(r => r.idExclusivo).filter(Boolean))].sort();
         const classes = [...new Set(descarteCompleto.map(r => r.classe).filter(Boolean))].sort();
         const parceiros = [...new Set(descarteCompleto.map(r => r.parceiro).filter(Boolean))].sort();
         const motivos = [...new Set(descarteCompleto.map(r => r.motivo).filter(Boolean))].sort();
 
-        classes.forEach(c => selClasse.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`));
-        parceiros.forEach(p => selParceiro.insertAdjacentHTML('beforeend', `<option value="${p}">${p}</option>`));
-        motivos.forEach(m => selMotivo.insertAdjacentHTML('beforeend', `<option value="${m}">${m}</option>`));
-
-        selClasse.dataset.preenchido = '1';
+        preencherSelectResumo(document.getElementById('resumoFiltroId'), ids, 'Todos');
+        preencherSelectResumo(document.getElementById('resumoFiltroClasse'), classes, 'Todas');
+        preencherSelectResumo(document.getElementById('resumoFiltroParceiro'), parceiros, 'Todos');
+        preencherSelectResumo(document.getElementById('resumoFiltroMotivo'), motivos, 'Todos');
     }
 
     function limparFiltrosResumo() {
@@ -2321,7 +2334,7 @@
     function aplicarFiltrosResumo() {
         if (!descarteCompleto || !producaoCompleto) return;
 
-        const idBusca = normalizarTexto(document.getElementById('resumoFiltroId').value || '');
+        const idSelecionado = document.getElementById('resumoFiltroId').value;
         const classe = document.getElementById('resumoFiltroClasse').value;
         const parceiro = document.getElementById('resumoFiltroParceiro').value;
         const motivo = document.getElementById('resumoFiltroMotivo').value;
@@ -2336,7 +2349,7 @@
 
         const descarteFiltrado = descarteCompleto
             .filter(r => r.descartadoKg > 0)
-            .filter(r => !idBusca || normalizarTexto(r.idExclusivo).includes(idBusca))
+            .filter(r => !idSelecionado || r.idExclusivo === idSelecionado)
             .filter(r => !classeNorm || normalizarTexto(r.classe) === classeNorm)
             .filter(r => !parceiroNorm || normalizarTexto(r.parceiro) === parceiroNorm)
             .filter(r => !motivoNorm || normalizarTexto(r.motivo) === motivoNorm)
@@ -2737,6 +2750,7 @@ ${listaCombos}`;
         btn.textContent = 'Atualizando… (0s)';
         try {
             await carregarDadosCompletos(true);
+            popularFiltrosResumo();
             aplicarFiltrosResumo();
         } finally {
             clearInterval(tickerBtn);
@@ -2746,10 +2760,9 @@ ${listaCombos}`;
     });
     document.getElementById('btnLimparFiltrosResumo').addEventListener('click', limparFiltrosResumo);
     document.getElementById('btnCapturarResumo').addEventListener('click', capturarResumo);
-    ['resumoFiltroClasse', 'resumoFiltroParceiro', 'resumoFiltroMotivo', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte'].forEach(id => {
+    ['resumoFiltroId', 'resumoFiltroClasse', 'resumoFiltroParceiro', 'resumoFiltroMotivo', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte'].forEach(id => {
         document.getElementById(id).addEventListener('change', aplicarFiltrosResumo);
     });
-    document.getElementById('resumoFiltroId').addEventListener('input', aplicarFiltrosResumo);
     document.getElementById('thResumoData').addEventListener('click', () => {
         ordenacaoResumoAsc = !ordenacaoResumoAsc;
         renderizarTabelaResumo();
