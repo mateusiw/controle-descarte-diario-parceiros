@@ -189,6 +189,49 @@
     .filtro-periodo { display: flex; align-items: center; gap: 8px; }
     .filtro-periodo span { font-size: 0.75rem; color: var(--text-secondary); }
 
+    /* ── Abas (Painel / Comparar Parceiros) ── */
+    .abas-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+
+    .aba-btn {
+        background: #ffffff;
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 9px 16px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        font-family: inherit;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .aba-btn:hover { border-color: var(--emerald-500); }
+
+    .aba-btn.ativa {
+        background: linear-gradient(135deg, var(--emerald-600), var(--emerald-700));
+        border-color: transparent;
+        color: #fff;
+    }
+
+    /* !important é necessário aqui: esta classe é usada em elementos que já têm
+       outra classe com "display" próprio (ex.: .row-charts é display:grid e vem
+       depois no CSS, então venceria o display:none sem o !important). */
+    .oculto { display: none !important; }
+
+    .filtros-comparacao { display: flex; flex-wrap: wrap; gap: 16px; }
+
+    .checkbox-linha {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        font-size: 0.82rem;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    .checkbox-linha input { accent-color: var(--emerald-600); width: 16px; height: 16px; cursor: pointer; }
+
     /* ── Multiselect dos filtros (Parceiro/Classe/Motivo): botão que abre um painel
        com checkboxes, permitindo escolher 0 (= todos), 1 ou vários valores ao mesmo tempo. ── */
     .multiselect { position: relative; }
@@ -260,6 +303,21 @@
         border-color: var(--emerald-500);
         box-shadow: 0 0 0 3px var(--emerald-100);
     }
+
+    .multiselect-sel-todos {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--card-border);
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--emerald-700);
+        cursor: pointer;
+    }
+
+    .multiselect-sel-todos input { accent-color: var(--emerald-600); }
+    .multiselect-sel-todos input:disabled + span { opacity: 0.5; }
 
     .multiselect-opcoes { max-height: 220px; overflow-y: auto; }
 
@@ -1190,6 +1248,11 @@
         </div>
     </div>
 
+    <div class="abas-nav">
+        <button class="aba-btn ativa" id="btnAbaPainel" type="button">📊 Painel</button>
+        <button class="aba-btn" id="btnAbaComparacao" type="button">🆚 Comparar Parceiros</button>
+    </div>
+
     <div id="conteudo">
         <div class="loading-wrap"><div class="spinner"></div></div>
     </div>
@@ -1222,6 +1285,11 @@
     let chartMotivos = null;
     let chartCultura = null;
     let chartDiaSemana = null;
+    let chartComparacaoTaxa = null;
+    let chartComparacaoMotivo = null;
+    let chartComparacaoDiaSemanaGrupos = null;
+    let chartComparacaoMotivoPizza = null;
+    let chartComparacaoDiaSemana = null;
     if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
 
     let mostrarRotulos = false;
@@ -1236,10 +1304,18 @@
     let ultimasDicasIA = [];
     let ultimasLinhasResumo = [];
     let ordenacaoResumoAsc = false;
+    let ultimasLinhasComparacao = null;
 
     // Seleção atual dos filtros de múltipla escolha (Parceiro/Classe/Motivo).
     // Conjunto vazio = "todos"; com 1+ valores, só passam registros que batem com algum deles.
-    const filtrosMulti = { parceiro: new Set(), classe: new Set(), motivo: new Set() };
+    const filtrosMulti = {
+        parceiro: new Set(), classe: new Set(), motivo: new Set(),
+        compararParceiros: new Set(), compararClasse: new Set(), compararMotivo: new Set()
+    };
+
+    // Lista de todos os parceiros do dataset — usada pela aba de Comparação pra saber
+    // quem entra no grupo "Demais Parceiros" (todo mundo que não foi selecionado).
+    let todosParceirosNomes = [];
 
     const BRAND_LOGO_URL = 'https://i.imgur.com/AHcNvib.png';
 
@@ -1806,6 +1882,134 @@
 
             <div class="footer-info">ℹ️ <span id="footerInfo"></span></div>
             </div>
+
+            <div id="painelComparacao" class="oculto">
+                <div class="secao">
+                    <div class="card">
+                        <div class="card-titulo-row">
+                            <div class="card-titulo"><span class="dot"></span>Comparar Parceiros</div>
+                            <span class="card-caption">Usa o mesmo Período do painel principal — Cultura e Motivo aqui são independentes dos filtros de lá</span>
+                        </div>
+                        <div class="filtros-comparacao">
+                            <div class="filtro-campo" style="max-width:320px;">
+                                <label id="lblFiltroCompararParceiros">Parceiros para comparar</label>
+                                <div class="multiselect">
+                                    <button type="button" class="multiselect-toggle" id="filtroCompararParceirosToggle" aria-haspopup="true" aria-expanded="false">
+                                        <span class="ms-label">Nenhum selecionado</span><span class="ms-seta">▾</span>
+                                    </button>
+                                    <div class="multiselect-painel" id="filtroCompararParceirosPainel" hidden>
+                                        <input type="text" class="multiselect-busca" id="filtroCompararParceirosBusca" placeholder="Pesquisar parceiro...">
+                                        <div class="multiselect-opcoes" id="filtroCompararParceirosOpcoes"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="filtro-campo" style="max-width:220px;">
+                                <label id="lblFiltroCompararClasse">Cultura (Classe)</label>
+                                <div class="multiselect">
+                                    <button type="button" class="multiselect-toggle" id="filtroCompararClasseToggle" aria-haspopup="true" aria-expanded="false">
+                                        <span class="ms-label">Todas</span><span class="ms-seta">▾</span>
+                                    </button>
+                                    <div class="multiselect-painel" id="filtroCompararClassePainel" hidden>
+                                        <input type="text" class="multiselect-busca" id="filtroCompararClasseBusca" placeholder="Pesquisar cultura...">
+                                        <div class="multiselect-opcoes" id="filtroCompararClasseOpcoes"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="filtro-campo" style="max-width:260px;">
+                                <label id="lblFiltroCompararMotivo">Motivo</label>
+                                <div class="multiselect">
+                                    <button type="button" class="multiselect-toggle" id="filtroCompararMotivoToggle" aria-haspopup="true" aria-expanded="false">
+                                        <span class="ms-label">Todos</span><span class="ms-seta">▾</span>
+                                    </button>
+                                    <div class="multiselect-painel" id="filtroCompararMotivoPainel" hidden>
+                                        <input type="text" class="multiselect-busca" id="filtroCompararMotivoBusca" placeholder="Pesquisar motivo...">
+                                        <div class="multiselect-opcoes" id="filtroCompararMotivoOpcoes"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <label class="checkbox-linha">
+                            <input type="checkbox" id="compararRestanteToggle">
+                            Agrupar os parceiros não selecionados como "Demais Parceiros"
+                        </label>
+                        <p class="msg-info" id="comparacaoMensagem" style="margin-top:12px;">Selecione ao menos 2 parceiros para comparar (ou 1 parceiro + a opção acima).</p>
+                    </div>
+                </div>
+
+                <div class="secao row-charts oculto" id="comparacaoGraficosSecao">
+                    <div class="card">
+                        <div class="card-titulo-row">
+                            <div class="card-titulo"><span class="dot"></span>% Taxa de Descarte — Comparativo</div>
+                            <span class="card-caption">Descartado ÷ Produzido de cada parceiro</span>
+                        </div>
+                        <div class="chart-box alto"><canvas id="graficoComparacaoTaxa"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-titulo-row">
+                            <div class="card-titulo"><span class="dot"></span>Descarte por Motivo — Comparativo</div>
+                            <span class="card-caption">% do descarte de cada um, por motivo (não kg — assim dá pra comparar grupos de tamanhos diferentes)</span>
+                        </div>
+                        <div class="chart-box alto"><canvas id="graficoComparacaoMotivo"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="secao row-charts oculto" id="comparacaoGraficosDiaSemanaSecao">
+                    <div class="card">
+                        <div class="card-titulo-row">
+                            <div class="card-titulo"><span class="dot"></span>Descarte por Dia da Semana — Comparativo</div>
+                            <span class="card-caption">% do descarte de cada um, por dia da semana (mesma lógica do gráfico de Motivo acima)</span>
+                        </div>
+                        <div class="chart-box alto"><canvas id="graficoComparacaoDiaSemanaGrupos"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-titulo"><span class="dot"></span>% Descarte por Dia da Semana (conjunto comparado)</div>
+                        <p class="destaque-dia" id="destaqueComparacaoDiaSemana"></p>
+                        <div class="chart-box"><canvas id="graficoComparacaoDiaSemana"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="secao row-charts oculto" id="comparacaoGraficosExtraSecao">
+                    <div class="card motivo-card">
+                        <div class="card-titulo"><span class="dot"></span>% Motivo dos Descartes (conjunto comparado)</div>
+                        <div class="chart-box donut"><canvas id="graficoComparacaoMotivoPizza"></canvas></div>
+                        <div class="legenda-motivos" id="legendaComparacaoMotivos"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-titulo"><span class="dot"></span>Motivo Principal por Parceiro</div>
+                        <div class="tabela-wrap">
+                            <table>
+                                <thead><tr><th>Parceiro</th><th>Motivo mais frequente</th><th>Kg</th></tr></thead>
+                                <tbody id="corpoComparacaoMotivoPorParceiro"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="secao oculto" id="comparacaoAnaliseSecao">
+                    <div class="card">
+                        <div class="card-titulo-row">
+                            <div class="card-titulo"><span class="dot"></span>💡 Análise dos Motivos de Descarte (IA)</div>
+                            <span class="card-caption">Gerado com Groq AI</span>
+                        </div>
+                        <button class="btn-imprimir" id="btnGerarDicasComparacao" type="button">✨ Gerar Análise com IA</button>
+                        <div id="comparacaoDicasIaResultado"></div>
+                    </div>
+                </div>
+
+                <div class="secao oculto" id="comparacaoTabelaSecao">
+                    <div class="card">
+                        <div class="card-titulo"><span class="dot"></span>Resumo Comparativo</div>
+                        <div class="tabela-wrap">
+                            <table>
+                                <thead>
+                                    <tr><th>Parceiro</th><th>Produzido (kg)</th><th>Descartado (kg)</th><th>Taxa</th><th>Motivo Principal</th></tr>
+                                </thead>
+                                <tbody id="corpoComparacaoTabela"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
 
         document.getElementById('thPercentual').addEventListener('click', () => {
@@ -1819,6 +2023,15 @@
         });
 
         document.getElementById('btnGerarDicas').addEventListener('click', gerarDicasIA);
+
+        // Os multiselects e o checkbox de comparação só existem a partir daqui (são
+        // montados junto com o resto do layout), por isso são ligados aqui em vez de
+        // junto dos outros no fim do script.
+        configurarMultiSelect('compararParceiros', 'Nenhum selecionado', renderizarComparacaoParceiros);
+        configurarMultiSelect('compararClasse', 'Todas', renderizarComparacaoParceiros);
+        configurarMultiSelect('compararMotivo', 'Todos', renderizarComparacaoParceiros);
+        document.getElementById('compararRestanteToggle').addEventListener('change', renderizarComparacaoParceiros);
+        document.getElementById('btnGerarDicasComparacao').addEventListener('click', gerarDicasComparacaoIA);
     }
 
     function preencherResumo(dados, extras, dataInicio, dataFim) {
@@ -2107,9 +2320,13 @@
 
         popularOpcoesMultiSelect('parceiro', jsonDescarte.parceiros);
         popularOpcoesMultiSelect('classe', jsonDescarte.classes);
+        popularOpcoesMultiSelect('compararParceiros', jsonDescarte.parceiros);
+        popularOpcoesMultiSelect('compararClasse', jsonDescarte.classes);
+        todosParceirosNomes = jsonDescarte.parceiros.slice();
 
         const motivos = [...new Set((jsonDescarte.descarte || []).map(r => r.motivo).filter(Boolean))].sort();
         popularOpcoesMultiSelect('motivo', motivos);
+        popularOpcoesMultiSelect('compararMotivo', motivos);
 
         painelParceiro.dataset.preenchido = '1';
     }
@@ -2125,12 +2342,16 @@
     }
 
     // Filtra as opções visíveis do painel conforme o texto digitado na busca (sem
-    // acento/maiúsculas) e mostra um aviso quando nada bate com o termo.
+    // acento/maiúsculas) e mostra um aviso quando nada bate com o termo. Uma opção
+    // também some se estiver marcada como indisponível via data-indisponivel (usado
+    // pelo seletor de parceiros da aba de Comparação, escondido conforme Cultura/Motivo).
     function filtrarOpcoesMultiSelect(opcoesEl, termoBruto) {
         const termo = normalizarTexto(termoBruto.trim());
         let algumVisivel = false;
         opcoesEl.querySelectorAll('.multiselect-opcao').forEach(op => {
-            const visivel = !termo || normalizarTexto(op.textContent).includes(termo);
+            const bateComBusca = !termo || normalizarTexto(op.textContent).includes(termo);
+            const disponivel = op.dataset.indisponivel !== '1';
+            const visivel = bateComBusca && disponivel;
             op.style.display = visivel ? '' : 'none';
             if (visivel) algumVisivel = true;
         });
@@ -2152,12 +2373,48 @@
     // painel em si nunca é recriado (só o innerHTML das opções muda), então um único
     // listener de "change" nele resolve pra qualquer checkbox marcada/desmarcada,
     // mesmo as inseridas depois.
-    function configurarMultiSelect(campo, rotuloTodos) {
+    function configurarMultiSelect(campo, rotuloTodos, aoMudar) {
         const Campo = `${campo[0].toUpperCase()}${campo.slice(1)}`;
         const toggle = document.getElementById(`filtro${Campo}Toggle`);
         const painel = document.getElementById(`filtro${Campo}Painel`);
         const busca = document.getElementById(`filtro${Campo}Busca`);
         const opcoes = document.getElementById(`filtro${Campo}Opcoes`);
+
+        // Linha "Selecionar todos" — marca/desmarca de uma vez só as opções que estão
+        // visíveis no momento (ou seja, que batem com o que foi digitado na busca).
+        // Criada aqui em vez de no HTML porque os 6 painéis (parceiro/classe/motivo do
+        // painel + os 3 da aba de comparação) usam exatamente a mesma lógica.
+        const linhaSelTodos = document.createElement('label');
+        linhaSelTodos.className = 'multiselect-sel-todos';
+        linhaSelTodos.innerHTML = '<input type="checkbox"><span class="ms-sel-todos-texto"></span>';
+        busca.insertAdjacentElement('afterend', linhaSelTodos);
+        const checkboxSelTodos = linhaSelTodos.querySelector('input');
+        const textoSelTodos = linhaSelTodos.querySelector('span');
+
+        const opcoesVisiveis = () => [...opcoes.querySelectorAll('.multiselect-opcao')].filter(op => op.style.display !== 'none');
+
+        function atualizarSelTodos() {
+            const checkboxesVisiveis = opcoesVisiveis().map(op => op.querySelector('input[type="checkbox"]'));
+            const marcados = checkboxesVisiveis.filter(cb => cb.checked).length;
+            textoSelTodos.textContent = busca.value.trim()
+                ? `Selecionar todos os ${checkboxesVisiveis.length} encontrados`
+                : `Selecionar todos (${checkboxesVisiveis.length})`;
+            checkboxSelTodos.disabled = checkboxesVisiveis.length === 0;
+            checkboxSelTodos.checked = checkboxesVisiveis.length > 0 && marcados === checkboxesVisiveis.length;
+            checkboxSelTodos.indeterminate = marcados > 0 && marcados < checkboxesVisiveis.length;
+        }
+
+        checkboxSelTodos.addEventListener('change', () => {
+            opcoesVisiveis().forEach(op => {
+                const cb = op.querySelector('input[type="checkbox"]');
+                cb.checked = checkboxSelTodos.checked;
+                if (cb.checked) filtrosMulti[campo].add(cb.value);
+                else filtrosMulti[campo].delete(cb.value);
+            });
+            atualizarRotuloMultiSelect(campo, rotuloTodos);
+            atualizarSelTodos();
+            aoMudar();
+        });
 
         toggle.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2169,18 +2426,23 @@
                 toggle.setAttribute('aria-expanded', 'true');
                 busca.value = '';
                 filtrarOpcoesMultiSelect(opcoes, '');
+                atualizarSelTodos();
                 busca.focus();
             }
         });
 
-        busca.addEventListener('input', () => filtrarOpcoesMultiSelect(opcoes, busca.value));
+        busca.addEventListener('input', () => {
+            filtrarOpcoesMultiSelect(opcoes, busca.value);
+            atualizarSelTodos();
+        });
 
         painel.addEventListener('change', (e) => {
-            if (!e.target.matches('input[type="checkbox"]')) return;
+            if (!e.target.matches('input[type="checkbox"]') || e.target === checkboxSelTodos) return;
             if (e.target.checked) filtrosMulti[campo].add(e.target.value);
             else filtrosMulti[campo].delete(e.target.value);
             atualizarRotuloMultiSelect(campo, rotuloTodos);
-            aplicarFiltros();
+            atualizarSelTodos();
+            aoMudar();
         });
     }
 
@@ -2706,6 +2968,82 @@ ${listaCombos}`;
         }
     }
 
+    // Mesma ideia do "Gerar Dicas com IA" do painel principal, mas explicando a
+    // COMPARAÇÃO: por que quem tem taxa mais alta está perdendo mais (com base nos
+    // motivos de cada parceiro/grupo) e o que quem está bem parece estar fazendo certo.
+    async function gerarDicasComparacaoIA() {
+        const apiKey = (localStorage.getItem('groqApiKey') || '').trim();
+        const btn = document.getElementById('btnGerarDicasComparacao');
+        const resultado = document.getElementById('comparacaoDicasIaResultado');
+
+        if (!apiKey) {
+            alert('Configure sua chave da API da Groq no botão ⚙️ no topo do painel antes de gerar a análise.');
+            abrirModalConfigIA();
+            return;
+        }
+        if (!ultimasLinhasComparacao || !ultimasLinhasComparacao.length) {
+            alert('Selecione os parceiros para comparar antes de gerar a análise.');
+            return;
+        }
+
+        const comGrupos = ultimasLinhasComparacao.filter(p => p.kgDescartado > 0);
+        if (!comGrupos.length) {
+            resultado.innerHTML = '<p class="msg-info" style="margin-top:8px;">Sem registros de descarte no conjunto comparado para gerar a análise.</p>';
+            return;
+        }
+
+        const listaGrupos = comGrupos.map(p => {
+            const motivosTexto = Object.entries(p.motivos)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 4)
+                .map(([motivo, kg]) => `${motivo} (${formatarPct(p.kgDescartado ? kg / p.kgDescartado * 100 : 0)})`)
+                .join(', ');
+            return `- ${p.parceiro}: taxa de descarte ${p.taxa === null ? 'sem produção registrada' : formatarPct(p.taxa)}, principais motivos: ${motivosTexto || 'nenhum'}`;
+        }).join('\n');
+
+        const dataInicio = document.getElementById('filtroDe').value;
+        const dataFim = document.getElementById('filtroAte').value;
+
+        const prompt = `Você é um especialista agrícola em pós-colheita analisando uma comparação entre parceiros (ou grupos de parceiros) de uma cooperativa. Com base na taxa de descarte e nos principais motivos de cada um, explique objetivamente por que quem tem taxa mais alta provavelmente está perdendo mais — cite os motivos específicos de cada um e as causas técnicas prováveis (colheita, transporte, armazenamento, manuseio etc.) — e também o que quem está com taxa baixa parece estar fazendo certo. Responda em português do Brasil, em formato de lista simples (uma linha por observação, começando com "-"), sem introdução nem conclusão.
+
+Comparação (${formatarDataLonga(dataInicio)} a ${formatarDataLonga(dataFim)}):
+${listaGrupos}`;
+
+        btn.disabled = true;
+        btn.textContent = '✨ Gerando análise...';
+        resultado.innerHTML = '<div class="loading-wrap" style="margin-top:12px;"><div class="spinner"></div></div>';
+
+        try {
+            const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.4
+                })
+            });
+
+            const json = await resp.json();
+            if (!resp.ok) throw new Error(json.error?.message || `Erro ${resp.status} ao consultar a IA.`);
+
+            const texto = json.choices?.[0]?.message?.content?.trim();
+            if (texto) {
+                resultado.innerHTML = formatarDicasIA(parseLinhasDicas(texto));
+            } else {
+                resultado.innerHTML = '<p class="msg-erro" style="margin-top:8px;">A IA não retornou nenhuma análise.</p>';
+            }
+        } catch (e) {
+            resultado.innerHTML = `<p class="msg-erro" style="margin-top:8px;">Erro ao gerar análise: ${escapeHtml(e.message)}</p>`;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '✨ Gerar Análise com IA';
+        }
+    }
+
     function parseLinhasDicas(texto) {
         return texto.split('\n').map(l => l.trim()).filter(Boolean).map(l => l.replace(/^[-*]\s*/, ''));
     }
@@ -2797,7 +3135,12 @@ ${listaCombos}`;
         document.getElementById('filtroDe').value = primeiroDiaDoMes();
         document.getElementById('filtroAte').value = hojeISO();
 
-        document.querySelectorAll('.multiselect-painel input[type="checkbox"]:checked').forEach(cb => cb.checked = false);
+        // Painéis deste filtro (Parceiro/Classe/Motivo) — os da aba de Comparação são
+        // limpos à parte em limparFiltrosComparacao(), por serem um grupo de checkboxes
+        // independente (um seletor genérico pegaria os dois de uma vez).
+        ['filtroParceiroPainel', 'filtroClassePainel', 'filtroMotivoPainel'].forEach(id => {
+            document.getElementById(id).querySelectorAll('input[type="checkbox"]:checked').forEach(cb => cb.checked = false);
+        });
         filtrosMulti.parceiro.clear();
         filtrosMulti.classe.clear();
         filtrosMulti.motivo.clear();
@@ -2805,7 +3148,27 @@ ${listaCombos}`;
         atualizarRotuloMultiSelect('classe', 'Todas');
         atualizarRotuloMultiSelect('motivo', 'Todos');
 
+        limparFiltrosComparacao();
+
         aplicarFiltros();
+    }
+
+    // Limpa os seletores próprios da aba de Comparação (Parceiros/Cultura/Motivo e o
+    // checkbox "Demais Parceiros"). Chamado pelo "Limpar Filtros" do painel principal.
+    function limparFiltrosComparacao() {
+        const restanteToggle = document.getElementById('compararRestanteToggle');
+        if (!restanteToggle) return; // aba de comparação ainda não foi montada
+
+        ['filtroCompararParceirosPainel', 'filtroCompararClassePainel', 'filtroCompararMotivoPainel'].forEach(id => {
+            document.getElementById(id).querySelectorAll('input[type="checkbox"]:checked').forEach(cb => cb.checked = false);
+        });
+        filtrosMulti.compararParceiros.clear();
+        filtrosMulti.compararClasse.clear();
+        filtrosMulti.compararMotivo.clear();
+        atualizarRotuloMultiSelect('compararParceiros', 'Nenhum selecionado');
+        atualizarRotuloMultiSelect('compararClasse', 'Todas');
+        atualizarRotuloMultiSelect('compararMotivo', 'Todos');
+        restanteToggle.checked = false;
     }
 
     function aplicarFiltros() {
@@ -2851,8 +3214,379 @@ ${listaCombos}`;
         renderizarTaxaParceiro(dados.taxaPorParceiro);
         renderizarMotivoPorParceiro(dados.motivoPorParceiro);
         renderizarComparativo(periodos);
+        renderizarComparacaoParceiros();
 
         document.getElementById('ultimaAtualizacao').textContent = formatarDataHoraAgora();
+    }
+
+    // Alterna entre a aba do painel principal e a de comparação de parceiros. Os dois
+    // painéis são montados juntos (dentro de montarLayout), então nada existe ainda
+    // se o clique acontecer antes da primeira carga terminar — o guard abaixo ignora esse caso.
+    function alternarAba(aba) {
+        const painelDashboard = document.getElementById('painelDashboard');
+        const painelComparacao = document.getElementById('painelComparacao');
+        if (!painelDashboard || !painelComparacao) return;
+
+        document.getElementById('btnAbaPainel').classList.toggle('ativa', aba === 'painel');
+        document.getElementById('btnAbaComparacao').classList.toggle('ativa', aba === 'comparacao');
+        painelDashboard.classList.toggle('oculto', aba !== 'painel');
+        painelComparacao.classList.toggle('oculto', aba !== 'comparacao');
+
+        if (aba === 'comparacao') renderizarComparacaoParceiros();
+    }
+
+    // Esconde do seletor "Parceiros para comparar" quem nunca teve descarte/produção na
+    // Cultura/Motivo escolhidos ali mesmo (ex.: com Cultura = Brócolis, some quem só
+    // trabalha com Tomate) — olha o histórico inteiro, não só o período do painel, pra
+    // um parceiro não sumir da lista só por não ter registro nas datas selecionadas.
+    // Se um parceiro já selecionado deixa de bater, ele é desmarcado automaticamente.
+    function atualizarDisponibilidadeParceirosComparacao() {
+        const opcoes = document.getElementById('filtroCompararParceirosOpcoes');
+        const busca = document.getElementById('filtroCompararParceirosBusca');
+        if (!opcoes || !descarteCompleto || !producaoCompleto) return;
+
+        const classesNorm = new Set([...filtrosMulti.compararClasse].map(normalizarTexto));
+        const motivosNorm = new Set([...filtrosMulti.compararMotivo].map(normalizarTexto));
+
+        let disponiveis = null; // null = sem filtro de Cultura/Motivo ativo, todo mundo disponível
+        if (classesNorm.size || motivosNorm.size) {
+            disponiveis = new Set();
+            descarteCompleto
+                .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
+                .filter(r => !motivosNorm.size || motivosNorm.has(normalizarTexto(r.motivo)))
+                .forEach(r => { if (r.parceiro) disponiveis.add(normalizarTexto(r.parceiro)); });
+
+            // Motivo só existe em descarte — com só a Cultura filtrada (sem Motivo), também
+            // conta quem produziu aquela cultura, mesmo sem descarte registrado ainda.
+            if (!motivosNorm.size) {
+                producaoCompleto
+                    .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
+                    .forEach(r => { if (r.parceiro) disponiveis.add(normalizarTexto(r.parceiro)); });
+            }
+        }
+
+        let algumRemovido = false;
+        opcoes.querySelectorAll('.multiselect-opcao').forEach(op => {
+            const cb = op.querySelector('input[type="checkbox"]');
+            const disponivel = !disponiveis || disponiveis.has(normalizarTexto(cb.value));
+            op.dataset.indisponivel = disponivel ? '' : '1';
+            if (!disponivel && cb.checked) {
+                cb.checked = false;
+                filtrosMulti.compararParceiros.delete(cb.value);
+                algumRemovido = true;
+            }
+        });
+
+        if (algumRemovido) atualizarRotuloMultiSelect('compararParceiros', 'Nenhum selecionado');
+        // Reaplica a busca atual pra recalcular quem fica visível (ela já checa data-indisponivel).
+        if (busca) busca.dispatchEvent(new Event('input'));
+    }
+
+    // Recalcula a comparação sempre que os parceiros/cultura/motivo escolhidos aqui (ou
+    // o checkbox "Demais Parceiros") mudam, OU que o Período do painel principal muda
+    // (chamado de dentro de aplicarFiltros). Usa o dataset completo direto — ignora os
+    // filtros de Parceiro/Classe/Motivo do painel principal de propósito, já que esta
+    // aba tem os seus próprios seletores.
+    function renderizarComparacaoParceiros() {
+        const mensagem = document.getElementById('comparacaoMensagem');
+        if (!mensagem) return; // painel de comparação ainda não foi montado
+
+        atualizarDisponibilidadeParceirosComparacao();
+
+        const secoesResultado = [
+            'comparacaoGraficosSecao', 'comparacaoGraficosDiaSemanaSecao', 'comparacaoGraficosExtraSecao',
+            'comparacaoAnaliseSecao', 'comparacaoTabelaSecao'
+        ].map(id => document.getElementById(id));
+        const selecionados = [...filtrosMulti.compararParceiros];
+        const selecionadosNorm = new Set(selecionados.map(normalizarTexto));
+        const agruparRestante = document.getElementById('compararRestanteToggle').checked;
+        const restantes = agruparRestante
+            ? todosParceirosNomes.filter(p => !selecionadosNorm.has(normalizarTexto(p)))
+            : [];
+
+        const comparacaoValida = descarteCompleto && producaoCompleto
+            && (selecionados.length >= 2 || (selecionados.length >= 1 && restantes.length >= 1));
+
+        if (!comparacaoValida) {
+            ultimasLinhasComparacao = null;
+            mensagem.textContent = !descarteCompleto
+                ? 'Aguardando os dados carregarem...'
+                : 'Selecione ao menos 2 parceiros para comparar (ou 1 parceiro + a opção acima).';
+            mensagem.classList.remove('oculto');
+            secoesResultado.forEach(secao => secao.classList.add('oculto'));
+            return;
+        }
+
+        mensagem.classList.add('oculto');
+        secoesResultado.forEach(secao => secao.classList.remove('oculto'));
+
+        const dataInicio = document.getElementById('filtroDe').value;
+        const dataFim = document.getElementById('filtroAte').value;
+        // Cultura e Motivo aqui são os seletores próprios desta aba (compararClasse/
+        // compararMotivo), independentes dos filtros Classe/Motivo do painel principal.
+        const classesNorm = new Set([...filtrosMulti.compararClasse].map(normalizarTexto));
+        const motivosNorm = new Set([...filtrosMulti.compararMotivo].map(normalizarTexto));
+        const restantesNorm = new Set(restantes.map(normalizarTexto));
+
+        const pertenceAoEscopo = nomeNorm => selecionadosNorm.has(nomeNorm) || restantesNorm.has(nomeNorm);
+
+        const descarteFiltrado = descarteCompleto
+            .filter(r => r.descartadoKg > 0)
+            .filter(r => r.data >= dataInicio && r.data <= dataFim)
+            .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
+            .filter(r => !motivosNorm.size || motivosNorm.has(normalizarTexto(r.motivo)))
+            .filter(r => pertenceAoEscopo(normalizarTexto(r.parceiro)));
+
+        const producaoFiltrada = producaoCompleto
+            .filter(r => r.data >= dataInicio && r.data <= dataFim)
+            .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
+            .filter(r => r.parceiro && pertenceAoEscopo(normalizarTexto(r.parceiro)));
+
+        // Cada linha vira um "grupo": os parceiros selecionados individualmente, um por
+        // um, e (se o checkbox estiver ativo) mais um grupo único com todos os demais
+        // somados — assim dá pra comparar 1 parceiro específico contra o resto inteiro.
+        const grupos = selecionados.map(nome => ({ rotulo: nome, chaves: new Set([normalizarTexto(nome)]) }));
+        if (restantes.length) {
+            grupos.push({
+                rotulo: `Demais Parceiros (${restantes.length})`,
+                chaves: new Set(restantes.map(normalizarTexto)),
+                isGrupo: true
+            });
+        }
+
+        const linhas = grupos.map(grupo => {
+            const kgProduzido = producaoFiltrada
+                .filter(r => grupo.chaves.has(normalizarTexto(r.parceiro)))
+                .reduce((acc, r) => acc + r.producaoKg, 0);
+
+            const descarteDoGrupo = descarteFiltrado.filter(r => grupo.chaves.has(normalizarTexto(r.parceiro)));
+            const kgDescartado = descarteDoGrupo.reduce((acc, r) => acc + r.descartadoKg, 0);
+
+            const motivos = {};
+            const diasSemana = {};
+            descarteDoGrupo.forEach(r => {
+                const motivo = r.motivo || 'Não informado';
+                motivos[motivo] = (motivos[motivo] || 0) + r.descartadoKg;
+                const dia = diaDaSemana(r.data);
+                diasSemana[dia] = (diasSemana[dia] || 0) + r.descartadoKg;
+            });
+            const motivoTop = Object.entries(motivos).sort((a, b) => b[1] - a[1])[0];
+
+            return {
+                parceiro: grupo.rotulo,
+                isGrupo: !!grupo.isGrupo,
+                kgProduzido,
+                kgDescartado,
+                taxa: kgProduzido ? (kgDescartado / kgProduzido * 100) : null,
+                motivoTop: motivoTop ? motivoTop[0] : '—',
+                motivoTopKg: motivoTop ? motivoTop[1] : 0,
+                motivoTopPct: motivoTop && kgDescartado ? (motivoTop[1] / kgDescartado * 100) : null,
+                motivos,
+                diasSemana
+            };
+        }).sort((a, b) => (b.taxa ?? -1) - (a.taxa ?? -1));
+
+        ultimasLinhasComparacao = linhas;
+
+        renderizarTabelaComparacao(linhas);
+        renderizarMotivoPorParceiroComparacao(linhas);
+        renderizarGraficosComparacao(linhas);
+
+        // % Motivo dos Descartes e % Descarte por Dia da Semana do conjunto inteiro
+        // que está sendo comparado (todos os selecionados + o grupo "Demais Parceiros",
+        // se ativo) — reaproveita agregarDados, a mesma função usada no painel principal.
+        const dadosConjunto = agregarDados(descarteFiltrado, producaoFiltrada);
+        renderizarGraficosExtraComparacao(dadosConjunto);
+    }
+
+    function renderizarTabelaComparacao(linhas) {
+        document.getElementById('corpoComparacaoTabela').innerHTML = linhas.map(p => `
+            <tr>
+                <td>${p.isGrupo ? `<em>${p.parceiro}</em>` : p.parceiro}</td>
+                <td>${Number(p.kgProduzido).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                <td>${Number(p.kgDescartado).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                <td>${p.taxa === null ? '—' : `<span class="pct-badge" style="background:${corPct(p.taxa)}">${formatarPct(p.taxa)}</span>`}</td>
+                <td>${p.motivoTop}${p.motivoTopPct !== null ? ` (${formatarPct(p.motivoTopPct)} do descarte dele)` : ''}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Mesmo formato do card "Motivo Principal por Parceiro" do painel principal —
+    // só que restrito aos parceiros/grupos que estão sendo comparados nesta aba.
+    function renderizarMotivoPorParceiroComparacao(linhas) {
+        document.getElementById('corpoComparacaoMotivoPorParceiro').innerHTML = linhas
+            .filter(p => p.kgDescartado > 0)
+            .map(p => `
+                <tr>
+                    <td>${p.isGrupo ? `<em>${p.parceiro}</em>` : p.parceiro}</td>
+                    <td>${p.motivoTop}</td>
+                    <td>${Number(p.motivoTopKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="3" style="text-align:center;">Sem descartes no conjunto comparado.</td></tr>';
+    }
+
+    // Paleta usada pra identificar cada parceiro/grupo nos dois gráficos — precisa ser
+    // diferente da PALETA_MOTIVOS porque aqui as cores representam parceiros, não motivos.
+    const PALETA_COMPARACAO = ['#065f46', '#059669', '#10b981', '#34d399', '#0891b2', '#f59e0b', '#e11d48', '#7c3aed', '#94a3b8', '#0369a1'];
+
+    function renderizarGraficosComparacao(linhas) {
+        if (chartComparacaoTaxa) chartComparacaoTaxa.destroy();
+        if (chartComparacaoMotivo) chartComparacaoMotivo.destroy();
+        if (chartComparacaoDiaSemanaGrupos) chartComparacaoDiaSemanaGrupos.destroy();
+
+        const ctxTaxa = document.getElementById('graficoComparacaoTaxa');
+        chartComparacaoTaxa = new Chart(ctxTaxa, {
+            type: 'bar',
+            data: {
+                labels: linhas.map(p => p.parceiro),
+                datasets: [{
+                    label: '% Taxa de Descarte',
+                    data: linhas.map(p => p.taxa || 0),
+                    backgroundColor: linhas.map(p => corPct(p.taxa || 0))
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        display: mostrarRotulos, color: '#065f46', anchor: 'end', align: 'end',
+                        offset: 4, font: { weight: '700', size: 10 }, formatter: v => formatarPct(v)
+                    }
+                },
+                scales: { x: { ticks: { callback: v => v + '%' } } }
+            }
+        });
+
+        // Motivo no eixo X e um "dataset" por parceiro/grupo, com o valor em % DENTRO do
+        // próprio descarte do parceiro (não em kg bruto) — assim um grupo grande como
+        // "Demais Parceiros" fica comparável lado a lado com um parceiro só, mostrando
+        // proporcionalmente onde cada um perde mais, independente do volume total de cada um.
+        const motivosUnicos = [...new Set(linhas.flatMap(p => Object.keys(p.motivos)))]
+            .sort((a, b) => {
+                const totalA = linhas.reduce((acc, p) => acc + (p.motivos[a] || 0), 0);
+                const totalB = linhas.reduce((acc, p) => acc + (p.motivos[b] || 0), 0);
+                return totalB - totalA;
+            });
+
+        const ctxMotivo = document.getElementById('graficoComparacaoMotivo');
+        chartComparacaoMotivo = new Chart(ctxMotivo, {
+            type: 'bar',
+            data: {
+                labels: motivosUnicos,
+                datasets: linhas.map((p, i) => ({
+                    label: p.parceiro,
+                    data: motivosUnicos.map(motivo => p.kgDescartado ? ((p.motivos[motivo] || 0) / p.kgDescartado * 100) : 0),
+                    backgroundColor: PALETA_COMPARACAO[i % PALETA_COMPARACAO.length]
+                }))
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                    datalabels: { display: false }
+                },
+                scales: { y: { ticks: { callback: v => v + '%' } } }
+            }
+        });
+
+        // Mesma lógica do gráfico de Motivo acima, mas com dia da semana no eixo X:
+        // % DENTRO do próprio descarte de cada parceiro/grupo, pra responder direto
+        // "em quais dias X descarta proporcionalmente mais que os demais".
+        const ctxDiaSemanaGrupos = document.getElementById('graficoComparacaoDiaSemanaGrupos');
+        chartComparacaoDiaSemanaGrupos = new Chart(ctxDiaSemanaGrupos, {
+            type: 'bar',
+            data: {
+                labels: NOMES_DIA_SEMANA.map(n => n.slice(0, 3)),
+                datasets: linhas.map((p, i) => ({
+                    label: p.parceiro,
+                    data: NOMES_DIA_SEMANA.map((_, idx) => p.kgDescartado ? ((p.diasSemana[idx] || 0) / p.kgDescartado * 100) : 0),
+                    backgroundColor: PALETA_COMPARACAO[i % PALETA_COMPARACAO.length]
+                }))
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                    datalabels: { display: false }
+                },
+                scales: { y: { ticks: { callback: v => v + '%' } } }
+            }
+        });
+    }
+
+    // % Motivo dos Descartes (donut) e % Descarte por Dia da Semana (barras) do
+    // conjunto INTEIRO comparado (todos os parceiros/grupos somados) — mesmo formato
+    // dos gráficos equivalentes do painel principal, só que restritos a quem está
+    // sendo comparado nesta aba.
+    function renderizarGraficosExtraComparacao(dados) {
+        if (chartComparacaoMotivoPizza) chartComparacaoMotivoPizza.destroy();
+        if (chartComparacaoDiaSemana) chartComparacaoDiaSemana.destroy();
+
+        const ctxMotivoPizza = document.getElementById('graficoComparacaoMotivoPizza');
+        chartComparacaoMotivoPizza = new Chart(ctxMotivoPizza, {
+            type: 'doughnut',
+            data: {
+                labels: dados.porMotivo.map(m => m.motivo),
+                datasets: [{
+                    data: dados.porMotivo.map(m => m.kg),
+                    backgroundColor: dados.porMotivo.map((_, i) => PALETA_MOTIVOS[i % PALETA_MOTIVOS.length]),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        display: mostrarRotulos,
+                        color: '#fff',
+                        font: { weight: '700', size: 10 },
+                        formatter: (v, ctx) => formatarPct(dados.porMotivo[ctx.dataIndex].percentual)
+                    }
+                },
+                cutout: '62%'
+            }
+        });
+
+        document.getElementById('legendaComparacaoMotivos').innerHTML = dados.porMotivo.map((m, i) => `
+            <div class="legenda-item">
+                <span class="legenda-dot" style="background:${PALETA_MOTIVOS[i % PALETA_MOTIVOS.length]}"></span>
+                <span class="legenda-label">${m.motivo}</span>
+                <span class="legenda-valor">${formatarPct(m.percentual)}</span>
+            </div>
+        `).join('');
+
+        const piorDia = [...dados.porDiaSemana].sort((a, b) => b.percentual - a.percentual)[0];
+        const destaque = document.getElementById('destaqueComparacaoDiaSemana');
+        destaque.textContent = (piorDia && piorDia.kg > 0)
+            ? `Maior concentração: ${piorDia.diaSemana} (${formatarPct(piorDia.percentual)})`
+            : 'Sem descartes no conjunto comparado.';
+
+        const ctxDiaSemana = document.getElementById('graficoComparacaoDiaSemana');
+        chartComparacaoDiaSemana = new Chart(ctxDiaSemana, {
+            type: 'bar',
+            data: {
+                labels: dados.porDiaSemana.map(d => d.diaSemana.slice(0, 3)),
+                datasets: [{
+                    label: '% Descarte',
+                    data: dados.porDiaSemana.map(d => d.percentual),
+                    backgroundColor: dados.porDiaSemana.map(d => d === piorDia ? '#047857' : '#a7d8c5')
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        display: mostrarRotulos, color: '#065f46', anchor: 'end', align: 'end',
+                        offset: 4, font: { weight: '700', size: 10 }, formatter: v => formatarPct(v)
+                    }
+                },
+                scales: { y: { ticks: { callback: v => v + '%' } } }
+            }
+        });
     }
 
     // Baixa o histórico INTEIRO das duas planilhas (sem parâmetros de filtro) e
@@ -2941,20 +3675,26 @@ ${listaCombos}`;
     ['filtroDe', 'filtroAte'].forEach(id => {
         document.getElementById(id).addEventListener('change', aplicarFiltros);
     });
-    configurarMultiSelect('parceiro', 'Todos');
-    configurarMultiSelect('classe', 'Todas');
-    configurarMultiSelect('motivo', 'Todos');
+    configurarMultiSelect('parceiro', 'Todos', aplicarFiltros);
+    configurarMultiSelect('classe', 'Todas', aplicarFiltros);
+    configurarMultiSelect('motivo', 'Todos', aplicarFiltros);
     // Clique em qualquer lugar fora de um multiselect fecha o painel aberto; clique
     // dentro do painel (nas checkboxes) não deve fechá-lo.
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.multiselect')) fecharTodosMultiSelects();
     });
+    document.getElementById('btnAbaPainel').addEventListener('click', () => alternarAba('painel'));
+    document.getElementById('btnAbaComparacao').addEventListener('click', () => alternarAba('comparacao'));
     document.getElementById('btnImprimir').addEventListener('click', imprimirRelatorio);
     document.getElementById('btnCapturar').addEventListener('click', capturarPagina);
     document.getElementById('btnRotulos').addEventListener('click', () => {
         mostrarRotulos = !mostrarRotulos;
         document.getElementById('btnRotulos').textContent = mostrarRotulos ? '🏷️ Ocultar Rótulos' : '🏷️ Mostrar Rótulos';
         if (ultimoDataset) renderizarGraficos(ultimoDataset);
+        // Os gráficos da aba de Comparação usam a mesma variável mostrarRotulos, mas só
+        // são redesenhados quando algo lá muda — sem isso, alternar o botão aqui não
+        // teria efeito neles até a próxima mudança de filtro na aba.
+        renderizarComparacaoParceiros();
     });
     document.getElementById('btnRefreshIcone').addEventListener('click', () => carregarDadosCompletos(true));
     document.getElementById('btnConfigIA').addEventListener('click', abrirModalConfigIA);
