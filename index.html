@@ -231,13 +231,43 @@
         left: 0;
         z-index: 30;
         min-width: 220px;
-        max-height: 260px;
-        overflow-y: auto;
         background: #ffffff;
         border: 1px solid var(--card-border);
         border-radius: 12px;
         box-shadow: var(--card-shadow);
         padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    /* Sem isso, o "display: flex" acima vence o display:none padrão do atributo
+       [hidden] — o painel ficaria sempre visível em vez de só aparecer ao clicar. */
+    .multiselect-painel[hidden] { display: none; }
+
+    .multiselect-busca {
+        border: 1px solid #d8e3dd;
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 0.78rem;
+        font-family: inherit;
+        color: var(--text-primary);
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .multiselect-busca:focus {
+        border-color: var(--emerald-500);
+        box-shadow: 0 0 0 3px var(--emerald-100);
+    }
+
+    .multiselect-opcoes { max-height: 220px; overflow-y: auto; }
+
+    .multiselect-vazio {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        text-align: center;
+        padding: 10px 8px;
     }
 
     .multiselect-opcao {
@@ -1119,7 +1149,10 @@
                 <button type="button" class="multiselect-toggle" id="filtroParceiroToggle" aria-haspopup="true" aria-expanded="false">
                     <span class="ms-label">Todos</span><span class="ms-seta">▾</span>
                 </button>
-                <div class="multiselect-painel" id="filtroParceiroPainel" hidden></div>
+                <div class="multiselect-painel" id="filtroParceiroPainel" hidden>
+                    <input type="text" class="multiselect-busca" id="filtroParceiroBusca" placeholder="Pesquisar parceiro...">
+                    <div class="multiselect-opcoes" id="filtroParceiroOpcoes"></div>
+                </div>
             </div>
         </div>
         <div class="filtro-campo">
@@ -1128,7 +1161,10 @@
                 <button type="button" class="multiselect-toggle" id="filtroClasseToggle" aria-haspopup="true" aria-expanded="false">
                     <span class="ms-label">Todas</span><span class="ms-seta">▾</span>
                 </button>
-                <div class="multiselect-painel" id="filtroClassePainel" hidden></div>
+                <div class="multiselect-painel" id="filtroClassePainel" hidden>
+                    <input type="text" class="multiselect-busca" id="filtroClasseBusca" placeholder="Pesquisar classe...">
+                    <div class="multiselect-opcoes" id="filtroClasseOpcoes"></div>
+                </div>
             </div>
         </div>
         <div class="filtro-campo">
@@ -1137,7 +1173,10 @@
                 <button type="button" class="multiselect-toggle" id="filtroMotivoToggle" aria-haspopup="true" aria-expanded="false">
                     <span class="ms-label">Todos</span><span class="ms-seta">▾</span>
                 </button>
-                <div class="multiselect-painel" id="filtroMotivoPainel" hidden></div>
+                <div class="multiselect-painel" id="filtroMotivoPainel" hidden>
+                    <input type="text" class="multiselect-busca" id="filtroMotivoBusca" placeholder="Pesquisar motivo...">
+                    <div class="multiselect-opcoes" id="filtroMotivoOpcoes"></div>
+                </div>
             </div>
         </div>
         <div class="filtros-acoes">
@@ -2076,21 +2115,49 @@
     }
 
     function popularOpcoesMultiSelect(campo, valores) {
-        const painel = document.getElementById(`filtro${campo[0].toUpperCase()}${campo.slice(1)}Painel`);
-        painel.innerHTML = valores.map(v => `
+        const Campo = `${campo[0].toUpperCase()}${campo.slice(1)}`;
+        const opcoes = document.getElementById(`filtro${Campo}Opcoes`);
+        opcoes.innerHTML = valores.map(v => `
             <label class="multiselect-opcao">
                 <input type="checkbox" value="${escapeHtml(v)}"> ${escapeHtml(v)}
             </label>
         `).join('');
     }
 
-    // Cada multiselect é um botão que alterna um painel de checkboxes. O painel em si
-    // nunca é recriado (só o innerHTML muda), então um único listener de "change" nele
-    // resolve pra qualquer checkbox marcada/desmarcada, mesmo as inseridas depois.
+    // Filtra as opções visíveis do painel conforme o texto digitado na busca (sem
+    // acento/maiúsculas) e mostra um aviso quando nada bate com o termo.
+    function filtrarOpcoesMultiSelect(opcoesEl, termoBruto) {
+        const termo = normalizarTexto(termoBruto.trim());
+        let algumVisivel = false;
+        opcoesEl.querySelectorAll('.multiselect-opcao').forEach(op => {
+            const visivel = !termo || normalizarTexto(op.textContent).includes(termo);
+            op.style.display = visivel ? '' : 'none';
+            if (visivel) algumVisivel = true;
+        });
+
+        let vazio = opcoesEl.querySelector('.multiselect-vazio');
+        if (!algumVisivel) {
+            if (!vazio) {
+                vazio = document.createElement('div');
+                vazio.className = 'multiselect-vazio';
+                vazio.textContent = 'Nada encontrado.';
+                opcoesEl.appendChild(vazio);
+            }
+        } else if (vazio) {
+            vazio.remove();
+        }
+    }
+
+    // Cada multiselect é um botão que alterna um painel de checkboxes com busca. O
+    // painel em si nunca é recriado (só o innerHTML das opções muda), então um único
+    // listener de "change" nele resolve pra qualquer checkbox marcada/desmarcada,
+    // mesmo as inseridas depois.
     function configurarMultiSelect(campo, rotuloTodos) {
         const Campo = `${campo[0].toUpperCase()}${campo.slice(1)}`;
         const toggle = document.getElementById(`filtro${Campo}Toggle`);
         const painel = document.getElementById(`filtro${Campo}Painel`);
+        const busca = document.getElementById(`filtro${Campo}Busca`);
+        const opcoes = document.getElementById(`filtro${Campo}Opcoes`);
 
         toggle.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2100,8 +2167,13 @@
                 painel.hidden = false;
                 toggle.classList.add('aberto');
                 toggle.setAttribute('aria-expanded', 'true');
+                busca.value = '';
+                filtrarOpcoesMultiSelect(opcoes, '');
+                busca.focus();
             }
         });
+
+        busca.addEventListener('input', () => filtrarOpcoesMultiSelect(opcoes, busca.value));
 
         painel.addEventListener('change', (e) => {
             if (!e.target.matches('input[type="checkbox"]')) return;
