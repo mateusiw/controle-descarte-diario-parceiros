@@ -1305,6 +1305,8 @@
     let ultimasLinhasResumo = [];
     let ordenacaoResumoAsc = false;
     let ultimasLinhasComparacao = null;
+    let ultimoDadosConjuntoComparacao = null;
+    let ultimosFiltrosComparacao = null;
 
     // Seleção atual dos filtros de múltipla escolha (Parceiro/Classe/Motivo).
     // Conjunto vazio = "todos"; com 1+ valores, só passam registros que batem com algum deles.
@@ -1932,6 +1934,7 @@
                             <input type="checkbox" id="compararRestanteToggle">
                             Agrupar os parceiros não selecionados como "Demais Parceiros"
                         </label>
+                        <button class="btn-imprimir" id="btnImprimirComparacao" type="button" style="margin-top:12px;">🖨️ Imprimir Relatório da Comparação</button>
                         <p class="msg-info" id="comparacaoMensagem" style="margin-top:12px;">Selecione ao menos 2 parceiros para comparar (ou 1 parceiro + a opção acima).</p>
                     </div>
                 </div>
@@ -2032,6 +2035,7 @@
         configurarMultiSelect('compararMotivo', 'Todos', renderizarComparacaoParceiros);
         document.getElementById('compararRestanteToggle').addEventListener('change', renderizarComparacaoParceiros);
         document.getElementById('btnGerarDicasComparacao').addEventListener('click', gerarDicasComparacaoIA);
+        document.getElementById('btnImprimirComparacao').addEventListener('click', imprimirRelatorioComparacao);
     }
 
     function preencherResumo(dados, extras, dataInicio, dataFim) {
@@ -2623,6 +2627,167 @@
         }
         janela.document.open();
         janela.document.write(montarHtmlRelatorio(ultimoDataset, ultimosExtras, ultimosFiltros));
+        janela.document.close();
+    }
+
+    // Mesmo layout do relatório do painel principal, mas com as seções trocadas pelo
+    // que faz sentido numa comparação: parâmetros da comparação, resumo do conjunto
+    // inteiro, comparativo por parceiro/grupo e as quebras por motivo/dia da semana.
+    function montarHtmlRelatorioComparacao(linhas, dadosConjunto, filtros) {
+        const emitidoEm = formatarDataHoraAgora();
+        const periodoTexto = `${formatarDataLonga(filtros.dataInicio)} a ${formatarDataLonga(filtros.dataFim)}`;
+        const kg = v => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+        const linhasComparativo = linhas.map(p => `
+            <tr>
+                <td>${p.parceiro}</td>
+                <td class="num">${kg(p.kgProduzido)}</td>
+                <td class="num">${kg(p.kgDescartado)}</td>
+                <td class="num">${p.taxa === null ? '—' : formatarPct(p.taxa)}</td>
+                <td>${p.motivoTop}${p.motivoTopPct !== null ? ` (${formatarPct(p.motivoTopPct)})` : ''}</td>
+            </tr>
+        `).join('') || '<tr><td colspan="5" style="text-align:center;">Sem registros.</td></tr>';
+
+        const linhasMotivoPorParceiro = linhas
+            .filter(p => p.kgDescartado > 0)
+            .map(p => `
+                <tr><td>${p.parceiro}</td><td>${p.motivoTop}</td><td class="num">${kg(p.motivoTopKg)}</td></tr>
+            `).join('') || '<tr><td colspan="3" style="text-align:center;">Sem descartes no conjunto comparado.</td></tr>';
+
+        const linhasMotivo = dadosConjunto.porMotivo.map(m => `
+            <tr><td>${m.motivo}</td><td class="num">${kg(m.kg)}</td><td class="num">${formatarPct(m.percentual)}</td></tr>
+        `).join('') || '<tr><td colspan="3" class="num" style="text-align:center;">Sem registros no conjunto comparado.</td></tr>';
+
+        const linhasDiaSemana = [...dadosConjunto.porDiaSemana]
+            .sort((a, b) => b.kg - a.kg)
+            .map(d => `
+                <tr><td>${d.diaSemana}</td><td class="num">${kg(d.kg)}</td><td class="num">${formatarPct(d.percentual)}</td></tr>
+            `).join('') || '<tr><td colspan="3" class="num" style="text-align:center;">Sem registros no conjunto comparado.</td></tr>';
+
+        const parceirosTexto = linhas.filter(p => !p.isGrupo).map(p => p.parceiro).join(', ') || '—';
+        const restanteTexto = filtros.restantesCount
+            ? `Sim (${filtros.restantesCount} parceiro${filtros.restantesCount === 1 ? '' : 's'})`
+            : 'Não';
+
+        return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório Comparativo de Parceiros — SPG Sede</title>
+<style>
+    * { box-sizing: border-box; }
+    @page { margin: 6mm; }
+    html, body { width: 100%; height: 100%; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #000; margin: 0; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+    td, th { border: 1px solid #000; padding: 2px 6px; }
+    .logo-cel { width: 60px; text-align: center; }
+    .logo-cel img { width: 36px; height: 36px; }
+    .titulo-cel { text-align: center; }
+    .titulo-cel .t1 { font-size: 12px; font-weight: bold; }
+    .titulo-cel .t2 { font-size: 10px; }
+    .emissao-cel { width: 190px; text-align: center; }
+    .emissao-cel .lbl { font-size: 8px; font-weight: bold; }
+    .emissao-cel .val { font-size: 9px; font-weight: bold; color: #1a56db; }
+    .sistema-barra td { font-size: 9px; font-weight: bold; padding: 2px 8px; }
+    .secao-titulo td { font-weight: bold; font-size: 9.5px; padding: 2px 8px; }
+    thead th { font-size: 8.5px; text-transform: uppercase; font-weight: bold; text-align: left; }
+    .num { text-align: right; }
+    .valor-azul { color: #1a56db; font-weight: bold; }
+    .valor-forte { font-weight: bold; }
+    .rotulo { width: 110px; }
+    @media print { body { margin: 0; } }
+</style>
+</head>
+<body onload="window.print()">
+
+    <table>
+        <tr>
+            <td class="logo-cel"><img src="https://i.imgur.com/AHcNvib.png" alt="Logo SPG"></td>
+            <td class="titulo-cel">
+                <div class="t1">RELATÓRIO COMPARATIVO DE PARCEIROS</div>
+                <div class="t2">Comparação de Descarte entre Parceiros/Grupos</div>
+            </td>
+            <td class="emissao-cel">
+                <div class="lbl">DATA DE EMISSÃO</div>
+                <div class="val">${emitidoEm}</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="sistema-barra"><tr><td>SISTEMA DE PLANEJAMENTO E GESTÃO - SPG SEDE</td></tr></table>
+
+    <table class="secao-titulo"><tr><td>1. PARÂMETROS DA COMPARAÇÃO</td></tr></table>
+    <table>
+        <tr>
+            <td class="rotulo">PERÍODO:</td>
+            <td class="valor-azul">${periodoTexto}</td>
+            <td class="rotulo">CULTURA:</td>
+            <td class="valor-azul">${filtros.classe.length ? filtros.classe.join(', ') : 'Todas'}</td>
+        </tr>
+        <tr>
+            <td class="rotulo">MOTIVO:</td>
+            <td class="valor-azul">${filtros.motivo.length ? filtros.motivo.join(', ') : 'Todos'}</td>
+            <td class="rotulo">DEMAIS PARCEIROS:</td>
+            <td class="valor-azul">${restanteTexto}</td>
+        </tr>
+        <tr>
+            <td class="rotulo">PARCEIROS:</td>
+            <td class="valor-azul" colspan="3">${parceirosTexto}</td>
+        </tr>
+    </table>
+
+    <table class="secao-titulo"><tr><td>2. RESUMO DO CONJUNTO COMPARADO</td></tr></table>
+    <table>
+        <thead><tr><th>PRODUÇÃO TOTAL (KG)</th><th>DESCARTE TOTAL (KG)</th><th>% DESCARTE</th></tr></thead>
+        <tbody>
+            <tr>
+                <td class="valor-forte">${kg(dadosConjunto.producaoTotal)}</td>
+                <td class="valor-forte">${kg(dadosConjunto.descarteTotal)}</td>
+                <td class="valor-forte">${formatarPct(dadosConjunto.percentualDescarte)}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="secao-titulo"><tr><td>3. COMPARATIVO POR PARCEIRO/GRUPO</td></tr></table>
+    <table>
+        <thead><tr><th>PARCEIRO</th><th>PRODUZIDO (KG)</th><th>DESCARTADO (KG)</th><th>TAXA</th><th>MOTIVO PRINCIPAL (% DO DESCARTE DELE)</th></tr></thead>
+        <tbody>${linhasComparativo}</tbody>
+    </table>
+
+    <table class="secao-titulo"><tr><td>4. MOTIVO PRINCIPAL POR PARCEIRO</td></tr></table>
+    <table>
+        <thead><tr><th>PARCEIRO</th><th>MOTIVO MAIS FREQUENTE</th><th>KG</th></tr></thead>
+        <tbody>${linhasMotivoPorParceiro}</tbody>
+    </table>
+
+    <table class="secao-titulo"><tr><td>5. DESCARTE POR MOTIVO (CONJUNTO COMPARADO)</td></tr></table>
+    <table>
+        <thead><tr><th>MOTIVO</th><th>DESCARTADO (KG)</th><th>% DO TOTAL</th></tr></thead>
+        <tbody>${linhasMotivo}</tbody>
+    </table>
+
+    <table class="secao-titulo"><tr><td>6. DESCARTE POR DIA DA SEMANA (CONJUNTO COMPARADO)</td></tr></table>
+    <table>
+        <thead><tr><th>DIA DA SEMANA</th><th>DESCARTADO (KG)</th><th>% DO TOTAL</th></tr></thead>
+        <tbody>${linhasDiaSemana}</tbody>
+    </table>
+<\/body>
+<\/html>`;
+    }
+
+    function imprimirRelatorioComparacao() {
+        if (!ultimasLinhasComparacao || !ultimoDadosConjuntoComparacao || !ultimosFiltrosComparacao) {
+            alert('Selecione os parceiros para comparar (pelo menos 2, ou 1 + "Demais Parceiros") antes de imprimir.');
+            return;
+        }
+        const janela = window.open('', '_blank');
+        if (!janela) {
+            alert('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups do navegador.');
+            return;
+        }
+        janela.document.open();
+        janela.document.write(montarHtmlRelatorioComparacao(ultimasLinhasComparacao, ultimoDadosConjuntoComparacao, ultimosFiltrosComparacao));
         janela.document.close();
     }
 
@@ -3309,6 +3474,8 @@ ${listaGrupos}`;
 
         if (!comparacaoValida) {
             ultimasLinhasComparacao = null;
+            ultimoDadosConjuntoComparacao = null;
+            ultimosFiltrosComparacao = null;
             mensagem.textContent = !descarteCompleto
                 ? 'Aguardando os dados carregarem...'
                 : 'Selecione ao menos 2 parceiros para comparar (ou 1 parceiro + a opção acima).';
@@ -3397,6 +3564,16 @@ ${listaGrupos}`;
         // se ativo) — reaproveita agregarDados, a mesma função usada no painel principal.
         const dadosConjunto = agregarDados(descarteFiltrado, producaoFiltrada);
         renderizarGraficosExtraComparacao(dadosConjunto);
+
+        // Guardado pra o botão "Imprimir Relatório da Comparação" montar o relatório
+        // sem precisar refazer todo esse cálculo na hora do clique.
+        ultimoDadosConjuntoComparacao = dadosConjunto;
+        ultimosFiltrosComparacao = {
+            dataInicio, dataFim,
+            classe: [...filtrosMulti.compararClasse],
+            motivo: [...filtrosMulti.compararMotivo],
+            restantesCount: restantes.length
+        };
     }
 
     function renderizarTabelaComparacao(linhas) {
