@@ -189,6 +189,70 @@
     .filtro-periodo { display: flex; align-items: center; gap: 8px; }
     .filtro-periodo span { font-size: 0.75rem; color: var(--text-secondary); }
 
+    /* ── Multiselect dos filtros (Parceiro/Classe/Motivo): botão que abre um painel
+       com checkboxes, permitindo escolher 0 (= todos), 1 ou vários valores ao mesmo tempo. ── */
+    .multiselect { position: relative; }
+
+    .multiselect-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 170px;
+        border: 1px solid #d8e3dd;
+        border-radius: 10px;
+        padding: 8px 12px;
+        min-height: 38px;
+        font-size: 0.8rem;
+        font-family: inherit;
+        color: var(--text-primary);
+        background: #fbfdfc;
+        cursor: pointer;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .multiselect-toggle .ms-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .multiselect-toggle .ms-seta { font-size: 0.6rem; color: var(--text-secondary); flex-shrink: 0; }
+
+    .multiselect-toggle:focus-visible,
+    .multiselect-toggle.aberto {
+        border-color: var(--emerald-500);
+        box-shadow: 0 0 0 3px var(--emerald-100);
+    }
+
+    .multiselect-painel {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        z-index: 30;
+        min-width: 220px;
+        max-height: 260px;
+        overflow-y: auto;
+        background: #ffffff;
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        padding: 6px;
+    }
+
+    .multiselect-opcao {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 8px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        cursor: pointer;
+    }
+
+    .multiselect-opcao:hover { background: var(--emerald-50); }
+    .multiselect-opcao input { accent-color: var(--emerald-600); }
+
     /* No desktop os botões continuam soltos dentro de ".filtros" como sempre —
        esse wrapper só ganha layout próprio no celular (barra fixa no rodapé). */
     .filtros-acoes { display: contents; }
@@ -784,12 +848,13 @@
         .filtros > .btn-atualizar, .filtros > .btn-imprimir { grid-column: 1 / -1; }
         .filtro-periodo span { display: none; }
         .filtro-periodo input { flex: 1; min-width: 0; }
-        .filtro-campo input, .filtro-campo select, .modal-campo input {
+        .filtro-campo input, .filtro-campo select, .modal-campo input, .multiselect-toggle {
             width: 100%;
             /* 16px evita o zoom automático do iOS ao tocar no campo */
             font-size: 16px;
             min-height: 46px;
         }
+        .multiselect-painel { left: 0; right: 0; min-width: 0; }
         .btn-atualizar, .btn-imprimir { width: 100%; text-align: center; min-height: 46px; }
 
         /* ── Ações do painel principal viram uma barra fixa no rodapé, estilo app
@@ -1049,16 +1114,31 @@
             </div>
         </div>
         <div class="filtro-campo">
-            <label for="filtroParceiro">Parceiro</label>
-            <select id="filtroParceiro"><option value="">Todos</option></select>
+            <label id="lblFiltroParceiro">Parceiro</label>
+            <div class="multiselect">
+                <button type="button" class="multiselect-toggle" id="filtroParceiroToggle" aria-haspopup="true" aria-expanded="false">
+                    <span class="ms-label">Todos</span><span class="ms-seta">▾</span>
+                </button>
+                <div class="multiselect-painel" id="filtroParceiroPainel" hidden></div>
+            </div>
         </div>
         <div class="filtro-campo">
-            <label for="filtroClasse">Classe</label>
-            <select id="filtroClasse"><option value="">Todas</option></select>
+            <label id="lblFiltroClasse">Classe</label>
+            <div class="multiselect">
+                <button type="button" class="multiselect-toggle" id="filtroClasseToggle" aria-haspopup="true" aria-expanded="false">
+                    <span class="ms-label">Todas</span><span class="ms-seta">▾</span>
+                </button>
+                <div class="multiselect-painel" id="filtroClassePainel" hidden></div>
+            </div>
         </div>
         <div class="filtro-campo">
-            <label for="filtroMotivo">Motivo</label>
-            <select id="filtroMotivo"><option value="">Todos</option></select>
+            <label id="lblFiltroMotivo">Motivo</label>
+            <div class="multiselect">
+                <button type="button" class="multiselect-toggle" id="filtroMotivoToggle" aria-haspopup="true" aria-expanded="false">
+                    <span class="ms-label">Todos</span><span class="ms-seta">▾</span>
+                </button>
+                <div class="multiselect-painel" id="filtroMotivoPainel" hidden></div>
+            </div>
         </div>
         <div class="filtros-acoes">
             <button class="btn-atualizar" id="btnAtualizar">Atualizar ⟳</button>
@@ -1083,11 +1163,13 @@
     const APPS_SCRIPT_URL_DESCARTE = 'https://script.google.com/macros/s/AKfycbz4VOMt8Xx1f0R2C2if2rbN43M8-c9tG4GieOPNdkP9GUHS_lni5m78v_AemXGxVuvm/exec';
     const APPS_SCRIPT_URL_PRODUCAO = 'https://script.google.com/macros/s/AKfycbzUUyvG9wlQnvIQTM5jCrDxBH3wGSaA8gG2GM36PSgACfi84YX6uBYgqmNnU1NCfJrQhw/exec';
 
-    // Busca só o ano corrente: reduz o volume de linhas que o Apps Script devolve,
-    // deixando a carga mais rápida e menos sujeita a erro de conexão/timeout.
-    const ANO_HISTORICO_INICIO = new Date().getFullYear();
-    const URL_DESCARTE_HISTORICO = `${APPS_SCRIPT_URL_DESCARTE}?dataInicio=${ANO_HISTORICO_INICIO}-01-01&dataFim=${ANO_HISTORICO_INICIO}-12-31`;
-    const URL_PRODUCAO_HISTORICO = `${APPS_SCRIPT_URL_PRODUCAO}?dataInicio=${ANO_HISTORICO_INICIO}-01-01&dataFim=${ANO_HISTORICO_INICIO}-12-31`;
+    // Busca o ano corrente + o anterior: reduz o volume de linhas que o Apps Script
+    // devolve (comparado a trazer o histórico inteiro), mas ainda cobre o ano passado
+    // inteiro, tanto pra consulta manual quanto pro comparativo de períodos virar o ano.
+    const ANO_ATUAL = new Date().getFullYear();
+    const ANO_HISTORICO_INICIO = ANO_ATUAL - 1;
+    const URL_DESCARTE_HISTORICO = `${APPS_SCRIPT_URL_DESCARTE}?dataInicio=${ANO_HISTORICO_INICIO}-01-01&dataFim=${ANO_ATUAL}-12-31`;
+    const URL_PRODUCAO_HISTORICO = `${APPS_SCRIPT_URL_PRODUCAO}?dataInicio=${ANO_HISTORICO_INICIO}-01-01&dataFim=${ANO_ATUAL}-12-31`;
 
     const META_LIMITE = 5;       // % máximo de descarte considerado ideal
     const NUM_PERIODOS = 6;      // quantidade de janelas no comparativo (incluindo a atual)
@@ -1115,6 +1197,10 @@
     let ultimasDicasIA = [];
     let ultimasLinhasResumo = [];
     let ordenacaoResumoAsc = false;
+
+    // Seleção atual dos filtros de múltipla escolha (Parceiro/Classe/Motivo).
+    // Conjunto vazio = "todos"; com 1+ valores, só passam registros que batem com algum deles.
+    const filtrosMulti = { parceiro: new Set(), classe: new Set(), motivo: new Set() };
 
     const BRAND_LOGO_URL = 'https://i.imgur.com/AHcNvib.png';
 
@@ -1973,23 +2059,74 @@
         });
     }
 
-    // Popula os selects a partir do JSON completo já baixado (sem fetch próprio).
-    // O dataset "preenchido" evita duplicar <option> quando isso roda de novo
+    // Popula os painéis de checkbox a partir do JSON completo já baixado (sem fetch
+    // próprio). O dataset "preenchido" evita duplicar opções quando isso roda de novo
     // após uma revalidação em segundo plano.
     function preencherFiltros(jsonDescarte) {
-        const selParceiro = document.getElementById('filtroParceiro');
-        if (selParceiro.dataset.preenchido) return;
+        const painelParceiro = document.getElementById('filtroParceiroPainel');
+        if (painelParceiro.dataset.preenchido) return;
 
-        const selClasse = document.getElementById('filtroClasse');
-        const selMotivo = document.getElementById('filtroMotivo');
-
-        jsonDescarte.parceiros.forEach(p => selParceiro.insertAdjacentHTML('beforeend', `<option value="${p}">${p}</option>`));
-        jsonDescarte.classes.forEach(c => selClasse.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`));
+        popularOpcoesMultiSelect('parceiro', jsonDescarte.parceiros);
+        popularOpcoesMultiSelect('classe', jsonDescarte.classes);
 
         const motivos = [...new Set((jsonDescarte.descarte || []).map(r => r.motivo).filter(Boolean))].sort();
-        motivos.forEach(m => selMotivo.insertAdjacentHTML('beforeend', `<option value="${m}">${m}</option>`));
+        popularOpcoesMultiSelect('motivo', motivos);
 
-        selParceiro.dataset.preenchido = '1';
+        painelParceiro.dataset.preenchido = '1';
+    }
+
+    function popularOpcoesMultiSelect(campo, valores) {
+        const painel = document.getElementById(`filtro${campo[0].toUpperCase()}${campo.slice(1)}Painel`);
+        painel.innerHTML = valores.map(v => `
+            <label class="multiselect-opcao">
+                <input type="checkbox" value="${escapeHtml(v)}"> ${escapeHtml(v)}
+            </label>
+        `).join('');
+    }
+
+    // Cada multiselect é um botão que alterna um painel de checkboxes. O painel em si
+    // nunca é recriado (só o innerHTML muda), então um único listener de "change" nele
+    // resolve pra qualquer checkbox marcada/desmarcada, mesmo as inseridas depois.
+    function configurarMultiSelect(campo, rotuloTodos) {
+        const Campo = `${campo[0].toUpperCase()}${campo.slice(1)}`;
+        const toggle = document.getElementById(`filtro${Campo}Toggle`);
+        const painel = document.getElementById(`filtro${Campo}Painel`);
+
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const estaAberto = !painel.hidden;
+            fecharTodosMultiSelects();
+            if (!estaAberto) {
+                painel.hidden = false;
+                toggle.classList.add('aberto');
+                toggle.setAttribute('aria-expanded', 'true');
+            }
+        });
+
+        painel.addEventListener('change', (e) => {
+            if (!e.target.matches('input[type="checkbox"]')) return;
+            if (e.target.checked) filtrosMulti[campo].add(e.target.value);
+            else filtrosMulti[campo].delete(e.target.value);
+            atualizarRotuloMultiSelect(campo, rotuloTodos);
+            aplicarFiltros();
+        });
+    }
+
+    function fecharTodosMultiSelects() {
+        document.querySelectorAll('.multiselect-painel').forEach(p => p.hidden = true);
+        document.querySelectorAll('.multiselect-toggle').forEach(t => {
+            t.classList.remove('aberto');
+            t.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function atualizarRotuloMultiSelect(campo, rotuloTodos) {
+        const Campo = `${campo[0].toUpperCase()}${campo.slice(1)}`;
+        const label = document.querySelector(`#filtro${Campo}Toggle .ms-label`);
+        const selecionados = [...filtrosMulti[campo]];
+        if (selecionados.length === 0) label.textContent = rotuloTodos;
+        else if (selecionados.length <= 2) label.textContent = selecionados.join(', ');
+        else label.textContent = `${selecionados.length} selecionados`;
     }
 
     // Monta um relatório formal (tabelas com borda, cabeçalho e rodapé) no mesmo
@@ -2108,13 +2245,13 @@
             <td class="rotulo">PERÍODO:</td>
             <td class="valor-azul">${periodoTexto}</td>
             <td class="rotulo">PARCEIRO:</td>
-            <td class="valor-azul">${filtros.parceiro || 'Todos'}</td>
+            <td class="valor-azul">${filtros.parceiro && filtros.parceiro.length ? filtros.parceiro.join(', ') : 'Todos'}</td>
         </tr>
         <tr>
             <td class="rotulo">CLASSE:</td>
-            <td class="valor-azul">${filtros.classe || 'Todas'}</td>
+            <td class="valor-azul">${filtros.classe && filtros.classe.length ? filtros.classe.join(', ') : 'Todas'}</td>
             <td class="rotulo">MOTIVO:</td>
-            <td class="valor-azul">${filtros.motivo || 'Todos'}</td>
+            <td class="valor-azul">${filtros.motivo && filtros.motivo.length ? filtros.motivo.join(', ') : 'Todos'}</td>
         </tr>
     </table>
 
@@ -2587,9 +2724,15 @@ ${listaCombos}`;
     function limparFiltros() {
         document.getElementById('filtroDe').value = primeiroDiaDoMes();
         document.getElementById('filtroAte').value = hojeISO();
-        document.getElementById('filtroParceiro').value = '';
-        document.getElementById('filtroClasse').value = '';
-        document.getElementById('filtroMotivo').value = '';
+
+        document.querySelectorAll('.multiselect-painel input[type="checkbox"]:checked').forEach(cb => cb.checked = false);
+        filtrosMulti.parceiro.clear();
+        filtrosMulti.classe.clear();
+        filtrosMulti.motivo.clear();
+        atualizarRotuloMultiSelect('parceiro', 'Todos');
+        atualizarRotuloMultiSelect('classe', 'Todas');
+        atualizarRotuloMultiSelect('motivo', 'Todos');
+
         aplicarFiltros();
     }
 
@@ -2598,25 +2741,25 @@ ${listaCombos}`;
 
         const dataInicio = document.getElementById('filtroDe').value;
         const dataFim = document.getElementById('filtroAte').value;
-        const parceiro = document.getElementById('filtroParceiro').value;
-        const classe = document.getElementById('filtroClasse').value;
-        const motivo = document.getElementById('filtroMotivo').value;
+        const parceiros = [...filtrosMulti.parceiro];
+        const classes = [...filtrosMulti.classe];
+        const motivos = [...filtrosMulti.motivo];
 
-        ultimosFiltros = { dataInicio, dataFim, parceiro, classe, motivo };
+        ultimosFiltros = { dataInicio, dataFim, parceiro: parceiros, classe: classes, motivo: motivos };
 
-        const parceiroNorm = parceiro ? normalizarTexto(parceiro) : '';
-        const classeNorm = classe ? normalizarTexto(classe) : '';
-        const motivoNorm = motivo ? normalizarTexto(motivo) : '';
+        const parceirosNorm = new Set(parceiros.map(normalizarTexto));
+        const classesNorm = new Set(classes.map(normalizarTexto));
+        const motivosNorm = new Set(motivos.map(normalizarTexto));
 
         const descarteWide = descarteCompleto
             .filter(r => r.descartadoKg > 0)
-            .filter(r => !parceiroNorm || normalizarTexto(r.parceiro) === parceiroNorm)
-            .filter(r => !classeNorm || normalizarTexto(r.classe) === classeNorm)
-            .filter(r => !motivoNorm || normalizarTexto(r.motivo) === motivoNorm);
+            .filter(r => !parceirosNorm.size || parceirosNorm.has(normalizarTexto(r.parceiro)))
+            .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
+            .filter(r => !motivosNorm.size || motivosNorm.has(normalizarTexto(r.motivo)));
 
         const producaoWide = producaoCompleto
-            .filter(r => !parceiroNorm || !r.parceiro || normalizarTexto(r.parceiro) === parceiroNorm)
-            .filter(r => !classeNorm || normalizarTexto(r.classe) === classeNorm);
+            .filter(r => !parceirosNorm.size || !r.parceiro || parceirosNorm.has(normalizarTexto(r.parceiro)))
+            .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)));
 
         const descarteAtual = descarteWide.filter(r => r.data >= dataInicio && r.data <= dataFim);
         const producaoAtual = producaoWide.filter(r => r.data >= dataInicio && r.data <= dataFim);
@@ -2723,8 +2866,16 @@ ${listaCombos}`;
     document.getElementById('btnAtualizar').addEventListener('click', () => carregarDadosCompletos(true));
     document.getElementById('btnLimparFiltros').addEventListener('click', limparFiltros);
     document.getElementById('btnLimparCache').addEventListener('click', limparCacheLocal);
-    ['filtroDe', 'filtroAte', 'filtroParceiro', 'filtroClasse', 'filtroMotivo'].forEach(id => {
+    ['filtroDe', 'filtroAte'].forEach(id => {
         document.getElementById(id).addEventListener('change', aplicarFiltros);
+    });
+    configurarMultiSelect('parceiro', 'Todos');
+    configurarMultiSelect('classe', 'Todas');
+    configurarMultiSelect('motivo', 'Todos');
+    // Clique em qualquer lugar fora de um multiselect fecha o painel aberto; clique
+    // dentro do painel (nas checkboxes) não deve fechá-lo.
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.multiselect')) fecharTodosMultiSelects();
     });
     document.getElementById('btnImprimir').addEventListener('click', imprimirRelatorio);
     document.getElementById('btnCapturar').addEventListener('click', capturarPagina);
