@@ -1288,8 +1288,6 @@
     let chartComparacaoTaxa = null;
     let chartComparacaoMotivo = null;
     let chartComparacaoDiaSemanaGrupos = null;
-    let chartComparacaoMotivoPizza = null;
-    let chartComparacaoDiaSemana = null;
     if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
 
     let mostrarRotulos = false;
@@ -1954,37 +1952,12 @@
                         </div>
                         <div class="chart-box alto"><canvas id="graficoComparacaoMotivo"></canvas></div>
                     </div>
-                </div>
-
-                <div class="secao row-charts oculto" id="comparacaoGraficosDiaSemanaSecao">
                     <div class="card">
                         <div class="card-titulo-row">
                             <div class="card-titulo"><span class="dot"></span>Descarte por Dia da Semana — Comparativo</div>
-                            <span class="card-caption">% do descarte de cada um, por dia da semana (mesma lógica do gráfico de Motivo acima)</span>
+                            <span class="card-caption">% do descarte de cada um, por dia da semana (mesma lógica do gráfico de Motivo)</span>
                         </div>
                         <div class="chart-box alto"><canvas id="graficoComparacaoDiaSemanaGrupos"></canvas></div>
-                    </div>
-                    <div class="card">
-                        <div class="card-titulo"><span class="dot"></span>% Descarte por Dia da Semana (conjunto comparado)</div>
-                        <p class="destaque-dia" id="destaqueComparacaoDiaSemana"></p>
-                        <div class="chart-box"><canvas id="graficoComparacaoDiaSemana"></canvas></div>
-                    </div>
-                </div>
-
-                <div class="secao row-charts oculto" id="comparacaoGraficosExtraSecao">
-                    <div class="card motivo-card">
-                        <div class="card-titulo"><span class="dot"></span>% Motivo dos Descartes (conjunto comparado)</div>
-                        <div class="chart-box donut"><canvas id="graficoComparacaoMotivoPizza"></canvas></div>
-                        <div class="legenda-motivos" id="legendaComparacaoMotivos"></div>
-                    </div>
-                    <div class="card">
-                        <div class="card-titulo"><span class="dot"></span>Motivo Principal por Parceiro</div>
-                        <div class="tabela-wrap">
-                            <table>
-                                <thead><tr><th>Parceiro</th><th>Motivo mais frequente</th><th>Kg</th></tr></thead>
-                                <tbody id="corpoComparacaoMotivoPorParceiro"></tbody>
-                            </table>
-                        </div>
                     </div>
                 </div>
 
@@ -3339,6 +3312,11 @@ ${listaGrupos}`;
     function aplicarFiltros() {
         if (!descarteCompleto || !producaoCompleto) return; // ainda buscando pela 1ª vez
 
+        // Mesmo comportamento da aba Comparar: com Classe/Motivo selecionados, o filtro
+        // Parceiro só lista quem tem registro naquela cultura/motivo (e desmarca quem
+        // deixou de bater — por isso roda antes de ler filtrosMulti.parceiro abaixo).
+        atualizarDisponibilidadeParceiros('parceiro', 'classe', 'motivo', 'Todos');
+
         const dataInicio = document.getElementById('filtroDe').value;
         const dataFim = document.getElementById('filtroAte').value;
         const parceiros = [...filtrosMulti.parceiro];
@@ -3400,18 +3378,21 @@ ${listaGrupos}`;
         if (aba === 'comparacao') renderizarComparacaoParceiros();
     }
 
-    // Esconde do seletor "Parceiros para comparar" quem nunca teve descarte/produção na
-    // Cultura/Motivo escolhidos ali mesmo (ex.: com Cultura = Brócolis, some quem só
-    // trabalha com Tomate) — olha o histórico inteiro, não só o período do painel, pra
-    // um parceiro não sumir da lista só por não ter registro nas datas selecionadas.
+    // Esconde de um seletor de Parceiros quem nunca teve descarte/produção na
+    // Cultura/Motivo escolhidos no mesmo painel (ex.: com Cultura = Brócolis, some quem
+    // só trabalha com Tomate) — olha o histórico inteiro, não só o período filtrado,
+    // pra um parceiro não sumir da lista só por não ter registro nas datas selecionadas.
     // Se um parceiro já selecionado deixa de bater, ele é desmarcado automaticamente.
-    function atualizarDisponibilidadeParceirosComparacao() {
-        const opcoes = document.getElementById('filtroCompararParceirosOpcoes');
-        const busca = document.getElementById('filtroCompararParceirosBusca');
+    // Compartilhada entre o painel principal (parceiro/classe/motivo) e a aba de
+    // Comparação (compararParceiros/compararClasse/compararMotivo).
+    function atualizarDisponibilidadeParceiros(campoParceiros, campoClasse, campoMotivo, rotuloVazio) {
+        const Campo = `${campoParceiros[0].toUpperCase()}${campoParceiros.slice(1)}`;
+        const opcoes = document.getElementById(`filtro${Campo}Opcoes`);
+        const busca = document.getElementById(`filtro${Campo}Busca`);
         if (!opcoes || !descarteCompleto || !producaoCompleto) return;
 
-        const classesNorm = new Set([...filtrosMulti.compararClasse].map(normalizarTexto));
-        const motivosNorm = new Set([...filtrosMulti.compararMotivo].map(normalizarTexto));
+        const classesNorm = new Set([...filtrosMulti[campoClasse]].map(normalizarTexto));
+        const motivosNorm = new Set([...filtrosMulti[campoMotivo]].map(normalizarTexto));
 
         let disponiveis = null; // null = sem filtro de Cultura/Motivo ativo, todo mundo disponível
         if (classesNorm.size || motivosNorm.size) {
@@ -3437,14 +3418,18 @@ ${listaGrupos}`;
             op.dataset.indisponivel = disponivel ? '' : '1';
             if (!disponivel && cb.checked) {
                 cb.checked = false;
-                filtrosMulti.compararParceiros.delete(cb.value);
+                filtrosMulti[campoParceiros].delete(cb.value);
                 algumRemovido = true;
             }
         });
 
-        if (algumRemovido) atualizarRotuloMultiSelect('compararParceiros', 'Nenhum selecionado');
+        if (algumRemovido) atualizarRotuloMultiSelect(campoParceiros, rotuloVazio);
         // Reaplica a busca atual pra recalcular quem fica visível (ela já checa data-indisponivel).
         if (busca) busca.dispatchEvent(new Event('input'));
+    }
+
+    function atualizarDisponibilidadeParceirosComparacao() {
+        atualizarDisponibilidadeParceiros('compararParceiros', 'compararClasse', 'compararMotivo', 'Nenhum selecionado');
     }
 
     // Recalcula a comparação sempre que os parceiros/cultura/motivo escolhidos aqui (ou
@@ -3459,8 +3444,7 @@ ${listaGrupos}`;
         atualizarDisponibilidadeParceirosComparacao();
 
         const secoesResultado = [
-            'comparacaoGraficosSecao', 'comparacaoGraficosDiaSemanaSecao', 'comparacaoGraficosExtraSecao',
-            'comparacaoAnaliseSecao', 'comparacaoTabelaSecao'
+            'comparacaoGraficosSecao', 'comparacaoAnaliseSecao', 'comparacaoTabelaSecao'
         ].map(id => document.getElementById(id));
         const selecionados = [...filtrosMulti.compararParceiros];
         const selecionadosNorm = new Set(selecionados.map(normalizarTexto));
@@ -3556,18 +3540,13 @@ ${listaGrupos}`;
         ultimasLinhasComparacao = linhas;
 
         renderizarTabelaComparacao(linhas);
-        renderizarMotivoPorParceiroComparacao(linhas);
         renderizarGraficosComparacao(linhas);
 
-        // % Motivo dos Descartes e % Descarte por Dia da Semana do conjunto inteiro
-        // que está sendo comparado (todos os selecionados + o grupo "Demais Parceiros",
-        // se ativo) — reaproveita agregarDados, a mesma função usada no painel principal.
-        const dadosConjunto = agregarDados(descarteFiltrado, producaoFiltrada);
-        renderizarGraficosExtraComparacao(dadosConjunto);
-
+        // Agregado do conjunto inteiro comparado — não vira gráfico próprio (seria só a
+        // soma dos comparativos acima), mas o relatório impresso da comparação usa.
         // Guardado pra o botão "Imprimir Relatório da Comparação" montar o relatório
         // sem precisar refazer todo esse cálculo na hora do clique.
-        ultimoDadosConjuntoComparacao = dadosConjunto;
+        ultimoDadosConjuntoComparacao = agregarDados(descarteFiltrado, producaoFiltrada);
         ultimosFiltrosComparacao = {
             dataInicio, dataFim,
             classe: [...filtrosMulti.compararClasse],
@@ -3586,20 +3565,6 @@ ${listaGrupos}`;
                 <td>${p.motivoTop}${p.motivoTopPct !== null ? ` (${formatarPct(p.motivoTopPct)} do descarte dele)` : ''}</td>
             </tr>
         `).join('');
-    }
-
-    // Mesmo formato do card "Motivo Principal por Parceiro" do painel principal —
-    // só que restrito aos parceiros/grupos que estão sendo comparados nesta aba.
-    function renderizarMotivoPorParceiroComparacao(linhas) {
-        document.getElementById('corpoComparacaoMotivoPorParceiro').innerHTML = linhas
-            .filter(p => p.kgDescartado > 0)
-            .map(p => `
-                <tr>
-                    <td>${p.isGrupo ? `<em>${p.parceiro}</em>` : p.parceiro}</td>
-                    <td>${p.motivoTop}</td>
-                    <td>${Number(p.motivoTopKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
-                </tr>
-            `).join('') || '<tr><td colspan="3" style="text-align:center;">Sem descartes no conjunto comparado.</td></tr>';
     }
 
     // Paleta usada pra identificar cada parceiro/grupo nos dois gráficos — precisa ser
@@ -3687,79 +3652,6 @@ ${listaGrupos}`;
                 plugins: {
                     legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
                     datalabels: { display: false }
-                },
-                scales: { y: { ticks: { callback: v => v + '%' } } }
-            }
-        });
-    }
-
-    // % Motivo dos Descartes (donut) e % Descarte por Dia da Semana (barras) do
-    // conjunto INTEIRO comparado (todos os parceiros/grupos somados) — mesmo formato
-    // dos gráficos equivalentes do painel principal, só que restritos a quem está
-    // sendo comparado nesta aba.
-    function renderizarGraficosExtraComparacao(dados) {
-        if (chartComparacaoMotivoPizza) chartComparacaoMotivoPizza.destroy();
-        if (chartComparacaoDiaSemana) chartComparacaoDiaSemana.destroy();
-
-        const ctxMotivoPizza = document.getElementById('graficoComparacaoMotivoPizza');
-        chartComparacaoMotivoPizza = new Chart(ctxMotivoPizza, {
-            type: 'doughnut',
-            data: {
-                labels: dados.porMotivo.map(m => m.motivo),
-                datasets: [{
-                    data: dados.porMotivo.map(m => m.kg),
-                    backgroundColor: dados.porMotivo.map((_, i) => PALETA_MOTIVOS[i % PALETA_MOTIVOS.length]),
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    datalabels: {
-                        display: mostrarRotulos,
-                        color: '#fff',
-                        font: { weight: '700', size: 10 },
-                        formatter: (v, ctx) => formatarPct(dados.porMotivo[ctx.dataIndex].percentual)
-                    }
-                },
-                cutout: '62%'
-            }
-        });
-
-        document.getElementById('legendaComparacaoMotivos').innerHTML = dados.porMotivo.map((m, i) => `
-            <div class="legenda-item">
-                <span class="legenda-dot" style="background:${PALETA_MOTIVOS[i % PALETA_MOTIVOS.length]}"></span>
-                <span class="legenda-label">${m.motivo}</span>
-                <span class="legenda-valor">${formatarPct(m.percentual)}</span>
-            </div>
-        `).join('');
-
-        const piorDia = [...dados.porDiaSemana].sort((a, b) => b.percentual - a.percentual)[0];
-        const destaque = document.getElementById('destaqueComparacaoDiaSemana');
-        destaque.textContent = (piorDia && piorDia.kg > 0)
-            ? `Maior concentração: ${piorDia.diaSemana} (${formatarPct(piorDia.percentual)})`
-            : 'Sem descartes no conjunto comparado.';
-
-        const ctxDiaSemana = document.getElementById('graficoComparacaoDiaSemana');
-        chartComparacaoDiaSemana = new Chart(ctxDiaSemana, {
-            type: 'bar',
-            data: {
-                labels: dados.porDiaSemana.map(d => d.diaSemana.slice(0, 3)),
-                datasets: [{
-                    label: '% Descarte',
-                    data: dados.porDiaSemana.map(d => d.percentual),
-                    backgroundColor: dados.porDiaSemana.map(d => d === piorDia ? '#047857' : '#a7d8c5')
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    datalabels: {
-                        display: mostrarRotulos, color: '#065f46', anchor: 'end', align: 'end',
-                        offset: 4, font: { weight: '700', size: 10 }, formatter: v => formatarPct(v)
-                    }
                 },
                 scales: { y: { ticks: { callback: v => v + '%' } } }
             }
