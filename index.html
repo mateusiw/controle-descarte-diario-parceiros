@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
 <style>
     :root {
         --bg: #eef3f1;
@@ -133,9 +133,9 @@
     .btn-refresh-icone:active { transform: translateY(0); }
 
     main {
-        max-width: 1440px;
+        max-width: 1800px;
         margin: 0 auto;
-        padding: 22px 32px 56px;
+        padding: 22px 40px 56px;
     }
 
     /* ── Filtros ── */
@@ -219,6 +219,33 @@
     .oculto { display: none !important; }
 
     .filtros-comparacao { display: flex; flex-wrap: wrap; gap: 16px; }
+    /* Diferente da barra de filtros principal (compacta, lado a lado), aqui os três
+       seletores crescem pra preencher a largura do card — sem isso sobra bastante
+       espaço vazio à direita de cada combobox em telas largas. */
+    .filtros-comparacao .multiselect { width: 100%; }
+    .filtros-comparacao .multiselect-toggle { width: 100%; }
+
+    /* Aviso fixo de qual período está sendo comparado — sempre visível, mesmo antes
+       de escolher os parceiros, pra nunca ficar incerto sobre qual recorte de datas
+       os cartões/gráficos abaixo estão usando. Ocupa a largura toda do card (em vez
+       de um chip pequeno) pra não sobrar espaço vazio do lado. */
+    .periodo-badge {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        width: 100%;
+        background: var(--emerald-50);
+        border: 1px solid var(--emerald-100);
+        color: var(--emerald-700);
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+    .periodo-badge strong { font-weight: 800; margin-left: 4px; }
+    .periodo-badge-dica { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); }
 
     .checkbox-linha {
         display: flex;
@@ -427,6 +454,16 @@
 
     .card-caption { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; }
 
+    /* Linha "como ler" abaixo do título de cada gráfico — explica em uma frase o
+       que o gráfico mostra, pra ninguém se perder no significado de cada um. */
+    .card-info {
+        font-size: 0.74rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        margin: 4px 0 12px;
+    }
+    .card-info strong { color: var(--emerald-700); font-weight: 700; }
+
     /* ── Cards de estatística (linha principal) ── */
     .stats-principais {
         display: grid;
@@ -537,6 +574,31 @@
         border-radius: 10px;
     }
 
+    /* ── Análise da IA por parceiro (aba Comparar): um bloco por parceiro em vez de
+       um parágrafo solto — a bolinha usa a MESMA cor do parceiro nos gráficos acima,
+       então dá pra reconhecer quem é quem sem precisar reler o nome toda vez. ── */
+    .analise-item {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 11px 0;
+        border-bottom: 1px solid #eef1f0;
+    }
+    .analise-item:last-child { border-bottom: none; }
+    .analise-dot { width: 11px; height: 11px; border-radius: 4px; flex-shrink: 0; margin-top: 4px; }
+    .analise-corpo { min-width: 0; flex: 1; }
+    .analise-cabecalho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 3px; }
+    .analise-nome { font-weight: 800; font-size: 0.85rem; color: var(--text-primary); }
+    .analise-taxa {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        background: #eef1f5;
+        padding: 2px 8px;
+        border-radius: 999px;
+    }
+    .analise-texto { font-size: 0.82rem; line-height: 1.5; color: #33443c; }
+
     /* ── Gráficos ── */
     .row-charts {
         display: grid;
@@ -548,6 +610,9 @@
     .chart-box { position: relative; height: 260px; }
     .chart-box.alto { height: 320px; }
     .chart-box.donut { height: 190px; }
+    /* Gráfico largo (ocupa o card inteiro, fora do grid de 2 colunas) — mais espaço
+       horizontal pra rótulos de motivo compridos e legendas de muitos parceiros. */
+    .chart-box.largo { height: 360px; }
 
     .destaque-dia {
         font-size: 0.78rem;
@@ -826,6 +891,81 @@
     .variacao-ruim { color: var(--rose-600); font-weight: 700; }
     .variacao-neutra { color: var(--text-secondary); }
 
+    /* ── Cartões "Frente a Frente" da aba Comparar Parceiros: um cartão por
+       parceiro/grupo, com a cor de identidade dele (a mesma usada nos gráficos),
+       a taxa em destaque e as listas de pontos positivos e de atenção. ── */
+    .vs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+        align-items: stretch;
+    }
+
+    .vs-card {
+        border-top: 4px solid var(--vs-cor, var(--emerald-600));
+        display: flex;
+        flex-direction: column;
+    }
+
+    .vs-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .vs-dot { width: 12px; height: 12px; border-radius: 4px; background: var(--vs-cor, var(--emerald-600)); flex-shrink: 0; }
+    .vs-nome { font-weight: 800; font-size: 0.92rem; overflow-wrap: anywhere; }
+
+    .vs-chip {
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .vs-chip.melhor { background: var(--emerald-100); color: var(--emerald-700); }
+    .vs-chip.pior   { background: var(--rose-100); color: var(--rose-600); }
+
+    .vs-taxa { margin-bottom: 12px; }
+    .vs-taxa-valor { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+    .vs-taxa-sub { display: block; font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
+
+    .vs-metricas {
+        display: flex;
+        gap: 18px;
+        padding: 10px 0;
+        border-top: 1px solid #eef1f0;
+        border-bottom: 1px solid #eef1f0;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+    .vs-metrica-label {
+        font-size: 0.62rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 2px;
+    }
+    .vs-metrica-valor { font-size: 0.88rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .vs-secao-titulo {
+        font-size: 0.66rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 4px 0 2px;
+    }
+    .vs-secao-titulo.pos { color: var(--emerald-700); }
+    .vs-secao-titulo.neg { color: var(--rose-600); }
+
+    .vs-item {
+        display: flex;
+        gap: 7px;
+        align-items: flex-start;
+        font-size: 0.78rem;
+        line-height: 1.45;
+        color: #33443c;
+        padding: 4px 0;
+    }
+    .vs-item .vs-ico { flex-shrink: 0; }
+    .vs-vazio { font-size: 0.76rem; color: var(--text-secondary); font-style: italic; padding: 4px 0; }
+
     /* ── Rodapé ── */
     .footer-info {
         display: flex;
@@ -991,6 +1131,7 @@
         .chart-box { height: 220px; }
         .chart-box.alto { height: 250px; }
         .chart-box.donut { height: 170px; }
+        .chart-box.largo { height: 280px; }
 
         .row-strip-motivo { flex-direction: column; gap: 12px; }
         .strip-coluna, .motivo-coluna { flex: 1 1 auto; gap: 12px; }
@@ -999,6 +1140,9 @@
 
         .row-tabela-comparativo { flex-direction: column; gap: 12px; }
         .detalhamento-card, .comparativo-card { flex: 1 1 auto; }
+
+        .vs-grid { grid-template-columns: 1fr; gap: 12px; }
+        .vs-taxa-valor { font-size: 1.6rem; }
 
         /* Tabelas de Detalhamento e Comparativo rolam dentro de si mesmas no celular,
            em vez de esticar a tela toda pra baixo — cabeçalho fica fixo durante o scroll. */
@@ -1277,7 +1421,12 @@
     const NUM_PERIODOS = 6;      // quantidade de janelas no comparativo (incluindo a atual)
     const CACHE_TTL_MS = 5 * 60 * 1000; // por quanto tempo um cache é considerado "fresco"
 
-    const PALETA_MOTIVOS = ['#047857', '#059669', '#10b981', '#34d399', '#6ee7b7', '#f59e0b', '#f43f5e', '#94a3b8', '#a7d8c5', '#d1fae5'];
+    // Paleta categórica (identidade): 8 cores em ordem fixa, validadas para
+    // daltonismo (pior par adjacente ΔE 24,2 — mínimo recomendado é 12). Usada
+    // sempre que a cor responde "qual é qual" (motivos no donut, parceiros na
+    // comparação). Nunca gerar/reciclar uma 9ª cor: o excedente vira "Outros".
+    const PALETA_CATEGORICA = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4', '#eb6834'];
+    const COR_OUTROS = '#94a3b8'; // cinza neutro do grupo "Outros"/"Demais Parceiros"
     const NOMES_DIA_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
     let chartEvolucao = null;
@@ -1289,6 +1438,62 @@
     let chartComparacaoMotivo = null;
     let chartComparacaoDiaSemanaGrupos = null;
     if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
+
+    // ── Aparência padrão de todos os gráficos: mesma fonte do painel, grade em
+    // hairline discreta, eixos sem borda e tooltip escuro com bom espaçamento.
+    Chart.defaults.font.family = "'Inter', -apple-system, 'Segoe UI', sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.color = '#5f7268';
+    Chart.defaults.scale.grid.color = 'rgba(6, 78, 59, 0.07)';
+    Chart.defaults.scale.border = Object.assign({}, Chart.defaults.scale.border, { display: false });
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(3, 57, 43, 0.94)';
+    Chart.defaults.plugins.tooltip.titleFont = { weight: '700', size: 12 };
+    Chart.defaults.plugins.tooltip.bodyFont = { size: 11.5 };
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.boxPadding = 4;
+
+    // Barras finas com ponta arredondada — padrão aplicado nos gráficos de barra.
+    const ESTILO_BARRA = { borderRadius: 4, borderSkipped: 'start', maxBarThickness: 26 };
+
+    // Chip neutro (fundo escuro + texto branco) atrás de todo rótulo numérico dos
+    // gráficos — sem isso, o número se perde tanto no fundo branco do card quanto
+    // em cima de barras claras. O mesmo chip em todos os gráficos mantém a leitura
+    // consistente independente da cor da barra por baixo.
+    const ESTILO_ROTULO_CHIP = {
+        backgroundColor: 'rgba(4, 39, 30, 0.88)',
+        borderRadius: 4,
+        color: '#ffffff',
+        padding: { top: 3, bottom: 2, left: 6, right: 6 }
+    };
+
+    // Plugin que desenha uma linha pontilhada de meta num gráfico. Só age nos
+    // gráficos que declararem "plugins: { linhaMeta: { valor, eixo } }" nas opções.
+    Chart.register({
+        id: 'linhaMeta',
+        afterDatasetsDraw(chart, args, opts) {
+            if (!opts || opts.valor === undefined) return;
+            const horizontal = opts.eixo === 'x'; // linha vertical num gráfico de barras deitadas
+            const escala = horizontal ? chart.scales.x : chart.scales.y;
+            if (!escala || opts.valor < escala.min || opts.valor > escala.max) return;
+            const pix = escala.getPixelForValue(opts.valor);
+            const { ctx, chartArea } = chart;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(225, 29, 72, 0.55)';
+            ctx.setLineDash([5, 4]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            if (horizontal) { ctx.moveTo(pix, chartArea.top); ctx.lineTo(pix, chartArea.bottom); }
+            else { ctx.moveTo(chartArea.left, pix); ctx.lineTo(chartArea.right, pix); }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(225, 29, 72, 0.85)';
+            ctx.font = "700 10px 'Inter', sans-serif";
+            if (horizontal) ctx.fillText(`Meta ${opts.valor}%`, pix + 5, chartArea.top + 11);
+            else ctx.fillText(`Meta ${opts.valor}%`, chartArea.left + 5, pix - 5);
+            ctx.restore();
+        }
+    });
 
     let mostrarRotulos = false;
     let sequenciaCarga = 0;
@@ -1497,7 +1702,7 @@
         const evolucaoTemporal = datasOrdenadas.map(data => {
             const prod = producaoPorData[data] || 0;
             const desc = descartePorData[data] || 0;
-            return { data, percentual: prod ? (desc / prod * 100) : 0 };
+            return { data, kg: desc, percentual: prod ? (desc / prod * 100) : 0 };
         });
 
         const parceiroMap = {};
@@ -1735,31 +1940,35 @@
             <div class="secao row-charts">
                 <div class="card">
                     <div class="card-titulo-row">
-                        <div class="card-titulo"><span class="dot"></span>% Descarte por Parceiros</div>
+                        <div class="card-titulo"><span class="dot"></span>Quem Mais Descarta</div>
                         <span class="card-caption" id="captionParceiros"></span>
                     </div>
+                    <p class="card-info"><strong>Como ler:</strong> fatia de cada parceiro no total descartado do período. Barra maior = mais kg jogados fora por ele. Passe o mouse para ver os kg.</p>
                     <div class="chart-box alto"><canvas id="graficoParceiros"></canvas></div>
                 </div>
 
                 <div class="card">
                     <div class="card-titulo-row">
-                        <div class="card-titulo"><span class="dot"></span>Evolução Temporal (% Descarte)</div>
+                        <div class="card-titulo"><span class="dot"></span>% de Descarte Dia a Dia</div>
                         <span class="card-caption" id="captionEvolucao"></span>
                     </div>
+                    <p class="card-info"><strong>Como ler:</strong> quanto da produção de cada dia acabou no descarte. Picos indicam dias ruins — vale investigar o que aconteceu neles.</p>
                     <div class="chart-box"><canvas id="graficoEvolucao"></canvas></div>
                 </div>
 
                 <div class="card">
-                    <div class="card-titulo"><span class="dot"></span>% Descarte por Dia da Semana</div>
+                    <div class="card-titulo"><span class="dot"></span>Descarte por Dia da Semana</div>
+                    <p class="card-info"><strong>Como ler:</strong> em quais dias da semana o descarte se concentra (% do total do período). O dia mais crítico aparece em destaque.</p>
                     <p class="destaque-dia" id="destaqueDiaSemana"></p>
                     <div class="chart-box"><canvas id="graficoDiaSemana"></canvas></div>
                 </div>
 
                 <div class="card">
                     <div class="card-titulo-row">
-                        <div class="card-titulo"><span class="dot"></span>% Descarte por Cultura</div>
+                        <div class="card-titulo"><span class="dot"></span>Descarte por Cultura</div>
                         <span class="card-caption" id="captionCultura"></span>
                     </div>
+                    <p class="card-info"><strong>Como ler:</strong> fatia de cada cultura (brócolis, tomate…) no total descartado. Mostra quais produtos mais geram perda.</p>
                     <div class="chart-box"><canvas id="graficoCultura"></canvas></div>
                 </div>
             </div>
@@ -1804,6 +2013,7 @@
                             <div class="card-titulo"><span class="dot"></span>Taxa de Descarte por Parceiro</div>
                             <span class="card-caption">Descartado ÷ Produzido por ele</span>
                         </div>
+                        <p class="card-info"><strong>Como ler:</strong> diferente do gráfico "Quem Mais Descarta", aqui o número é justo com o tamanho de cada um — mostra quanto <strong>da própria produção</strong> do parceiro virou descarte. Taxa alta = ele perde muito do que produz, mesmo que produza pouco.</p>
                         <div class="tabela-wrap">
                             <table>
                                 <thead>
@@ -1817,7 +2027,8 @@
 
                 <div class="motivo-coluna">
                     <div class="card motivo-card">
-                        <div class="card-titulo"><span class="dot"></span>% Motivo dos Descartes</div>
+                        <div class="card-titulo"><span class="dot"></span>Motivos do Descarte</div>
+                        <p class="card-info"><strong>Como ler:</strong> por que se descartou — a fatia de cada motivo no total. A lista abaixo traz os percentuais exatos.</p>
                         <div class="chart-box donut"><canvas id="graficoMotivos"></canvas></div>
                         <div class="legenda-motivos" id="legendaMotivos"></div>
                     </div>
@@ -1868,7 +2079,8 @@
                 </div>
 
                 <div class="card comparativo-card">
-                    <div class="card-titulo"><span class="dot"></span>Resumo por Período Anterior (Comparativo)</div>
+                    <div class="card-titulo"><span class="dot"></span>Comparação com Períodos Anteriores</div>
+                    <p class="card-info"><strong>Como ler:</strong> o período filtrado (linha destacada) comparado com as janelas anteriores de mesma duração. Variação <span class="variacao-boa">▼ verde</span> = o % de descarte caiu (melhorou); <span class="variacao-ruim">▲ vermelha</span> = subiu.</p>
                     <div class="tabela-wrap">
                         <table class="tabela-comparativo">
                             <thead>
@@ -1888,10 +2100,15 @@
                     <div class="card">
                         <div class="card-titulo-row">
                             <div class="card-titulo"><span class="dot"></span>Comparar Parceiros</div>
-                            <span class="card-caption">Usa o mesmo Período do painel principal — Cultura e Motivo aqui são independentes dos filtros de lá</span>
+                            <span class="card-caption">Cultura e Motivo aqui são independentes dos filtros do painel principal</span>
                         </div>
+                        <div class="periodo-badge" id="comparacaoPeriodoBadge">
+                            <span>📅 Comparando o período: <strong id="comparacaoPeriodoTexto">—</strong></span>
+                            <span class="periodo-badge-dica">Para alterar, use o filtro "Período" no topo da página</span>
+                        </div>
+                        <p class="card-info">Escolha 2 ou mais parceiros abaixo e o painel monta um <strong>frente a frente</strong>: cada um ganha um cartão com seus pontos positivos e de atenção, e os gráficos mostram onde e por que cada um perde mais. A cor de cada parceiro é a mesma em todos os cartões e gráficos.</p>
                         <div class="filtros-comparacao">
-                            <div class="filtro-campo" style="max-width:320px;">
+                            <div class="filtro-campo" style="flex:1 1 260px;">
                                 <label id="lblFiltroCompararParceiros">Parceiros para comparar</label>
                                 <div class="multiselect">
                                     <button type="button" class="multiselect-toggle" id="filtroCompararParceirosToggle" aria-haspopup="true" aria-expanded="false">
@@ -1903,7 +2120,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="filtro-campo" style="max-width:220px;">
+                            <div class="filtro-campo" style="flex:1 1 200px;">
                                 <label id="lblFiltroCompararClasse">Cultura (Classe)</label>
                                 <div class="multiselect">
                                     <button type="button" class="multiselect-toggle" id="filtroCompararClasseToggle" aria-haspopup="true" aria-expanded="false">
@@ -1915,7 +2132,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="filtro-campo" style="max-width:260px;">
+                            <div class="filtro-campo" style="flex:1 1 220px;">
                                 <label id="lblFiltroCompararMotivo">Motivo</label>
                                 <div class="multiselect">
                                     <button type="button" class="multiselect-toggle" id="filtroCompararMotivoToggle" aria-haspopup="true" aria-expanded="false">
@@ -1937,27 +2154,37 @@
                     </div>
                 </div>
 
+                <div class="secao oculto" id="comparacaoPlacarSecao">
+                    <div class="vs-grid" id="comparacaoPlacar"></div>
+                </div>
+
                 <div class="secao row-charts oculto" id="comparacaoGraficosSecao">
                     <div class="card">
                         <div class="card-titulo-row">
-                            <div class="card-titulo"><span class="dot"></span>% Taxa de Descarte — Comparativo</div>
-                            <span class="card-caption">Descartado ÷ Produzido de cada parceiro</span>
+                            <div class="card-titulo"><span class="dot"></span>Taxa de Descarte: Quem Aproveita Melhor</div>
+                            <span class="card-caption">Menor barra = melhor</span>
                         </div>
+                        <p class="card-info"><strong>Como ler:</strong> quanto da produção de cada um foi para o descarte no período. A comparação é justa mesmo entre parceiros de tamanhos diferentes. A linha pontilhada vermelha marca a meta de ${META_LIMITE}%.</p>
                         <div class="chart-box alto"><canvas id="graficoComparacaoTaxa"></canvas></div>
                     </div>
                     <div class="card">
                         <div class="card-titulo-row">
-                            <div class="card-titulo"><span class="dot"></span>Descarte por Motivo — Comparativo</div>
-                            <span class="card-caption">% do descarte de cada um, por motivo (não kg — assim dá pra comparar grupos de tamanhos diferentes)</span>
+                            <div class="card-titulo"><span class="dot"></span>Em Que Dia Cada Um Perde Mais</div>
+                            <span class="card-caption">Cada cor = um parceiro</span>
                         </div>
-                        <div class="chart-box alto"><canvas id="graficoComparacaoMotivo"></canvas></div>
+                        <p class="card-info"><strong>Como ler:</strong> de cada 100 kg descartados pelo parceiro, quantos caíram em cada dia da semana. Concentração num dia sugere problema de logística/entrega naquele dia.</p>
+                        <div class="chart-box alto"><canvas id="graficoComparacaoDiaSemanaGrupos"></canvas></div>
                     </div>
+                </div>
+
+                <div class="secao oculto" id="comparacaoGraficoMotivoSecao">
                     <div class="card">
                         <div class="card-titulo-row">
-                            <div class="card-titulo"><span class="dot"></span>Descarte por Dia da Semana — Comparativo</div>
-                            <span class="card-caption">% do descarte de cada um, por dia da semana (mesma lógica do gráfico de Motivo)</span>
+                            <div class="card-titulo"><span class="dot"></span>Onde Cada Um Perde Mais (Motivo)</div>
+                            <span class="card-caption">Cada cor = um parceiro</span>
                         </div>
-                        <div class="chart-box alto"><canvas id="graficoComparacaoDiaSemanaGrupos"></canvas></div>
+                        <p class="card-info"><strong>Como ler:</strong> de cada 100 kg que o parceiro descartou, quantos foram por cada motivo. Compare as barras lado a lado: se a barra de um parceiro é bem maior num motivo, aquele é o problema típico <strong>dele</strong>.</p>
+                        <div class="chart-box largo"><canvas id="graficoComparacaoMotivo"></canvas></div>
                     </div>
                 </div>
 
@@ -1974,7 +2201,8 @@
 
                 <div class="secao oculto" id="comparacaoTabelaSecao">
                     <div class="card">
-                        <div class="card-titulo"><span class="dot"></span>Resumo Comparativo</div>
+                        <div class="card-titulo"><span class="dot"></span>Resumo Comparativo (Números Exatos)</div>
+                        <p class="card-info"><strong>Como ler:</strong> os mesmos dados dos cartões e gráficos acima, em números exatos — ordenados da maior taxa (pior) para a menor (melhor).</p>
                         <div class="tabela-wrap">
                             <table>
                                 <thead>
@@ -2161,15 +2389,14 @@
             : 0;
         document.getElementById('captionEvolucao').textContent = `Média do período: ${formatarPct(mediaPeriodo)}`;
 
-        const rotulosBarra = (cor, alinhamento) => ({
+        const rotulosBarra = (alinhamento) => Object.assign({
             display: mostrarRotulos,
-            color: cor,
             anchor: 'end',
             align: alinhamento,
             offset: 4,
             font: { weight: '700', size: 10 },
             formatter: v => formatarPct(v)
-        });
+        }, ESTILO_ROTULO_CHIP);
 
         chartEvolucao = new Chart(ctxEvolucao, {
             type: 'line',
@@ -2179,15 +2406,30 @@
                     label: '% Descarte',
                     data: dados.evolucaoTemporal.map(p => p.percentual),
                     borderColor: '#059669',
-                    backgroundColor: 'rgba(5,150,105,0.14)',
+                    backgroundColor: 'rgba(5,150,105,0.12)',
+                    borderWidth: 2,
                     fill: true,
                     tension: 0.35,
-                    pointRadius: 3
+                    pointRadius: 2.5,
+                    pointHoverRadius: 5
                 }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, datalabels: rotulosBarra('#047857', 'top') },
+                interaction: { mode: 'index', intersect: false },
+                // Reserva espaço acima do gráfico pro chip do rótulo do ponto mais alto
+                // não ficar cortado pela borda do canvas quando o valor chega perto do topo.
+                layout: { padding: { top: 22 } },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: rotulosBarra('top'),
+                    tooltip: {
+                        callbacks: {
+                            title: itens => `Dia ${itens[0].label}`,
+                            label: ctx => ` ${formatarPct(ctx.parsed.y)} da produção do dia descartada (${formatarKg(dados.evolucaoTemporal[ctx.dataIndex].kg)})`
+                        }
+                    }
+                },
                 scales: { y: { ticks: { callback: v => v + '%' } } }
             }
         });
@@ -2197,28 +2439,59 @@
             type: 'bar',
             data: {
                 labels: parceiros.map(p => p.parceiro),
-                datasets: [{
-                    label: '% Descarte',
+                datasets: [Object.assign({
+                    label: '% do total descartado',
                     data: parceiros.map(p => p.percentual),
                     backgroundColor: '#059669'
-                }]
+                }, ESTILO_BARRA)]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, datalabels: rotulosBarra('#065f46', 'end') },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: rotulosBarra('end'),
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${formatarKg(parceiros[ctx.dataIndex].kg)} — ${formatarPct(ctx.parsed.x)} de tudo que foi descartado`
+                        }
+                    }
+                },
                 scales: { x: { ticks: { callback: v => v + '%' } } }
             }
         });
 
+        // Donut de motivos: no máximo 7 fatias nomeadas + "Outros" agrupando o resto —
+        // acima disso as cores deixam de ser distinguíveis e o gráfico vira ruído.
+        // A legenda ao lado segue as mesmas fatias; o detalhe completo continua nas tabelas.
+        const LIMITE_FATIAS = 7;
+        let fatiasMotivo = dados.porMotivo;
+        if (dados.porMotivo.length > LIMITE_FATIAS + 1) {
+            const resto = dados.porMotivo.slice(LIMITE_FATIAS);
+            fatiasMotivo = [
+                ...dados.porMotivo.slice(0, LIMITE_FATIAS),
+                {
+                    motivo: `Outros (${resto.length} motivos)`,
+                    kg: resto.reduce((acc, m) => acc + m.kg, 0),
+                    percentual: resto.reduce((acc, m) => acc + m.percentual, 0)
+                }
+            ];
+        }
+        const temFatiaOutros = fatiasMotivo !== dados.porMotivo;
+        const corFatia = i => (temFatiaOutros && i === fatiasMotivo.length - 1)
+            ? COR_OUTROS
+            : PALETA_CATEGORICA[i % PALETA_CATEGORICA.length];
+
         chartMotivos = new Chart(ctxMotivos, {
             type: 'doughnut',
             data: {
-                labels: dados.porMotivo.map(m => m.motivo),
+                labels: fatiasMotivo.map(m => m.motivo),
                 datasets: [{
-                    data: dados.porMotivo.map(m => m.kg),
-                    backgroundColor: dados.porMotivo.map((_, i) => PALETA_MOTIVOS[i % PALETA_MOTIVOS.length]),
-                    borderWidth: 0
+                    data: fatiasMotivo.map(m => m.kg),
+                    backgroundColor: fatiasMotivo.map((_, i) => corFatia(i)),
+                    borderColor: '#ffffff',
+                    borderWidth: 2,
+                    hoverOffset: 6
                 }]
             },
             options: {
@@ -2229,16 +2502,21 @@
                         display: mostrarRotulos,
                         color: '#fff',
                         font: { weight: '700', size: 10 },
-                        formatter: (v, ctx) => formatarPct(dados.porMotivo[ctx.dataIndex].percentual)
+                        formatter: (v, ctx) => formatarPct(fatiasMotivo[ctx.dataIndex].percentual)
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${formatarKg(fatiasMotivo[ctx.dataIndex].kg)} — ${formatarPct(fatiasMotivo[ctx.dataIndex].percentual)} do total`
+                        }
                     }
                 },
                 cutout: '62%'
             }
         });
 
-        document.getElementById('legendaMotivos').innerHTML = dados.porMotivo.map((m, i) => `
+        document.getElementById('legendaMotivos').innerHTML = fatiasMotivo.map((m, i) => `
             <div class="legenda-item">
-                <span class="legenda-dot" style="background:${PALETA_MOTIVOS[i % PALETA_MOTIVOS.length]}"></span>
+                <span class="legenda-dot" style="background:${corFatia(i)}"></span>
                 <span class="legenda-label">${m.motivo}</span>
                 <span class="legenda-valor">${formatarPct(m.percentual)}</span>
             </div>
@@ -2250,16 +2528,24 @@
             type: 'bar',
             data: {
                 labels: dados.porClasse.map(c => c.classe),
-                datasets: [{
-                    label: '% Descarte',
+                datasets: [Object.assign({
+                    label: '% do total descartado',
                     data: dados.porClasse.map(c => c.percentual),
-                    backgroundColor: '#10b981'
-                }]
+                    backgroundColor: '#059669'
+                }, ESTILO_BARRA)]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, datalabels: rotulosBarra('#065f46', 'end') },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: rotulosBarra('end'),
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${formatarKg(dados.porClasse[ctx.dataIndex].kg)} — ${formatarPct(ctx.parsed.x)} de tudo que foi descartado`
+                        }
+                    }
+                },
                 scales: { x: { ticks: { callback: v => v + '%' } } }
             }
         });
@@ -2270,19 +2556,31 @@
             ? `Maior concentração: ${piorDia.diaSemana} (${formatarPct(piorDia.percentual)})`
             : 'Sem descartes no período selecionado.';
 
+        // Ênfase: só o pior dia ganha a cor forte; os demais ficam em tom neutro —
+        // o olho vai direto ao dia que importa.
         chartDiaSemana = new Chart(ctxDiaSemana, {
             type: 'bar',
             data: {
                 labels: dados.porDiaSemana.map(d => d.diaSemana.slice(0, 3)),
-                datasets: [{
-                    label: '% Descarte',
+                datasets: [Object.assign({
+                    label: '% do total descartado',
                     data: dados.porDiaSemana.map(d => d.percentual),
-                    backgroundColor: dados.porDiaSemana.map(d => d === piorDia ? '#047857' : '#a7d8c5')
-                }]
+                    backgroundColor: dados.porDiaSemana.map(d => d === piorDia ? '#047857' : '#c2d6cd')
+                }, ESTILO_BARRA)]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, datalabels: rotulosBarra('#065f46', 'top') },
+                layout: { padding: { top: 22 } },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: rotulosBarra('top'),
+                    tooltip: {
+                        callbacks: {
+                            title: itens => dados.porDiaSemana[itens[0].dataIndex].diaSemana,
+                            label: ctx => ` ${formatarKg(dados.porDiaSemana[ctx.dataIndex].kg)} — ${formatarPct(ctx.parsed.y)} do total do período`
+                        }
+                    }
+                },
                 scales: { y: { ticks: { callback: v => v + '%' } } }
             }
         });
@@ -2772,32 +3070,38 @@
         btn.disabled = true;
         btn.textContent = '📸 Gerando imagem...';
 
-        // Esconde a barra de título e a barra de filtros durante a captura, pra não
-        // aparecerem na imagem.
+        // Esconde a barra de título, a barra de filtros e — se a aba de Comparação
+        // estiver ativa — os campos de seleção dela (parceiros/cultura/motivo, o
+        // checkbox e o botão de imprimir), pra nenhum controle de entrada aparecer
+        // na imagem, só o resultado.
         const header = document.querySelector('header');
         const filtros = document.querySelector('main .filtros');
-        const exibicaoHeaderOriginal = header.style.display;
-        const exibicaoFiltrosOriginal = filtros.style.display;
-        header.style.display = 'none';
-        filtros.style.display = 'none';
+        const controlesComparacao = [
+            document.querySelector('.filtros-comparacao'),
+            document.querySelector('#painelComparacao .checkbox-linha'),
+            document.getElementById('btnImprimirComparacao')
+        ].filter(Boolean);
+
+        const exibicaoOriginal = new Map();
+        [header, filtros, ...controlesComparacao].forEach(el => {
+            exibicaoOriginal.set(el, el.style.display);
+            el.style.display = 'none';
+        });
 
         try {
-            const canvas = await html2canvas(document.body, {
-                scale: 3,
-                useCORS: true,
+            const dataUrl = await htmlToImage.toPng(document.body, {
+                pixelRatio: 3,
                 backgroundColor: '#f3f5f4',
-                windowWidth: document.documentElement.scrollWidth,
-                windowHeight: document.documentElement.scrollHeight
+                cacheBust: true
             });
             const link = document.createElement('a');
             link.download = `spg-painel-descarte-${hojeISO()}.png`;
-            link.href = canvas.toDataURL('image/png');
+            link.href = dataUrl;
             link.click();
         } catch {
             alert('Não foi possível gerar a captura da página.');
         } finally {
-            header.style.display = exibicaoHeaderOriginal;
-            filtros.style.display = exibicaoFiltrosOriginal;
+            exibicaoOriginal.forEach((valor, el) => { el.style.display = valor; });
             btn.disabled = false;
             btn.textContent = textoOriginal;
         }
@@ -2832,16 +3136,14 @@
         filtros.style.display = 'none';
 
         try {
-            const canvas = await html2canvas(painel, {
-                scale: 3,
-                useCORS: true,
+            const dataUrl = await htmlToImage.toPng(painel, {
+                pixelRatio: 3,
                 backgroundColor: '#f3f5f4',
-                windowWidth: painel.scrollWidth,
-                windowHeight: painel.scrollHeight
+                cacheBust: true
             });
             const link = document.createElement('a');
             link.download = `spg-resumo-descarte-${hojeISO()}.png`;
-            link.href = canvas.toDataURL('image/png');
+            link.href = dataUrl;
             link.click();
         } catch {
             alert('Não foi possível gerar a captura do resumo.');
@@ -3064,7 +3366,18 @@
             .map(c => `- ${c.classe} — motivo "${c.motivo}": ${formatarKg(c.kg)} (${formatarPct(c.percentual)} do total descartado)`)
             .join('\n');
 
-        const prompt = `Você é um especialista agrícola em pós-colheita. Com base nos principais motivos de descarte abaixo, gere dicas práticas e objetivas para reduzir o desperdício, uma dica por combinação de cultura + motivo. Seja específico ao produto e ao motivo (por exemplo, se for "amarelado e passado" no brócolis, explique as causas prováveis — como colheita tardia, tempo de espera até o processamento, temperatura e umidade de armazenamento — e as ações corretivas concretas). Responda em português do Brasil, em formato de lista simples (uma linha por dica, começando com "-"), sem introdução nem conclusão.
+        // Formato de saída travado (uma linha por combinação, "Cultura — Motivo :: dica")
+        // pra dar pra montar um cartão por combinação depois — sem isso a IA devolve
+        // parágrafos soltos, difíceis de escanear rapidamente.
+        const prompt = `Você é um especialista agrícola em pós-colheita.
+
+Para CADA combinação de cultura + motivo listada abaixo, escreva exatamente UMA linha, na mesma ordem, neste formato exato:
+Cultura — Motivo :: dica prática e objetiva (máximo 22 palavras)
+
+Regras da dica:
+- Explique a causa técnica mais provável (colheita tardia, tempo de espera até o processamento, temperatura/umidade de armazenamento, transporte, manuseio etc.) e a ação corretiva concreta — sem "pode", "provavelmente", "sugere" ou outras hedges, afirme direto.
+- Use exatamente a Cultura e o Motivo como estão na lista.
+- Não numere, não adicione marcadores, não escreva introdução nem conclusão — só as linhas, uma por combinação.
 
 Dados do período (${formatarDataLonga(ultimosFiltros.dataInicio)} a ${formatarDataLonga(ultimosFiltros.dataFim)}):
 ${listaCombos}`;
@@ -3092,8 +3405,9 @@ ${listaCombos}`;
 
             const texto = json.choices?.[0]?.message?.content?.trim();
             if (texto) {
-                ultimasDicasIA = parseLinhasDicas(texto);
-                resultado.innerHTML = formatarDicasIA(ultimasDicasIA);
+                const { html, itensParaImpressao } = formatarDicasPorCombo(texto, combos);
+                ultimasDicasIA = itensParaImpressao;
+                resultado.innerHTML = html;
             } else {
                 ultimasDicasIA = [];
                 resultado.innerHTML = '<p class="msg-erro" style="margin-top:8px;">A IA não retornou nenhuma dica.</p>';
@@ -3142,7 +3456,20 @@ ${listaCombos}`;
         const dataInicio = document.getElementById('filtroDe').value;
         const dataFim = document.getElementById('filtroAte').value;
 
-        const prompt = `Você é um especialista agrícola em pós-colheita analisando uma comparação entre parceiros (ou grupos de parceiros) de uma cooperativa. Com base na taxa de descarte e nos principais motivos de cada um, explique objetivamente por que quem tem taxa mais alta provavelmente está perdendo mais — cite os motivos específicos de cada um e as causas técnicas prováveis (colheita, transporte, armazenamento, manuseio etc.) — e também o que quem está com taxa baixa parece estar fazendo certo. Responda em português do Brasil, em formato de lista simples (uma linha por observação, começando com "-"), sem introdução nem conclusão.
+        // Formato de saída travado (uma linha por parceiro, "Nome — diagnóstico") pra
+        // dar pra colorir e organizar cada linha no cartão certo depois — sem isso a
+        // IA devolve parágrafos soltos misturando parceiros, difíceis de escanear.
+        const prompt = `Você é um especialista agrícola em pós-colheita analisando uma comparação entre parceiros (ou grupos de parceiros) de uma cooperativa.
+
+Para CADA parceiro/grupo da lista abaixo, escreva exatamente UMA linha, nesta ordem (taxa mais alta primeiro) e neste formato exato:
+Nome exato do parceiro — diagnóstico direto, técnico e objetivo (máximo 18 palavras)
+
+Regras do diagnóstico:
+- Afirme a causa técnica mais provável (colheita, transporte, armazenamento, manuseio etc.) direto, sem "pode", "provavelmente", "sugere" ou outras hedges.
+- Cite o motivo de descarte específico dele quando fizer sentido.
+- Se a taxa for baixa, diga objetivamente o que ele está fazendo certo.
+- Use o nome do parceiro EXATAMENTE como está na lista.
+- Não numere, não adicione marcadores, não escreva introdução nem conclusão — só as linhas, uma por parceiro.
 
 Comparação (${formatarDataLonga(dataInicio)} a ${formatarDataLonga(dataFim)}):
 ${listaGrupos}`;
@@ -3170,7 +3497,7 @@ ${listaGrupos}`;
 
             const texto = json.choices?.[0]?.message?.content?.trim();
             if (texto) {
-                resultado.innerHTML = formatarDicasIA(parseLinhasDicas(texto));
+                resultado.innerHTML = formatarAnaliseComparacaoIA(texto, comGrupos);
             } else {
                 resultado.innerHTML = '<p class="msg-erro" style="margin-top:8px;">A IA não retornou nenhuma análise.</p>';
             }
@@ -3182,12 +3509,95 @@ ${listaGrupos}`;
         }
     }
 
-    function parseLinhasDicas(texto) {
-        return texto.split('\n').map(l => l.trim()).filter(Boolean).map(l => l.replace(/^[-*]\s*/, ''));
+    // Cada linha da IA vem como "Nome — diagnóstico"; aqui casamos o nome com os dados
+    // reais da comparação (cor e taxa, já calculados — não confiamos nesses números
+    // vindos da IA) e montamos um cartão por parceiro, em vez de um parágrafo solto.
+    // Isso deixa a leitura muito mais rápida: a cor já identifica quem é quem (a mesma
+    // dos gráficos acima) e a taxa fica em destaque antes do texto explicativo.
+    function formatarAnaliseComparacaoIA(texto, comGrupos) {
+        const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+
+        return linhas.map(linha => {
+            const semMarcador = linha.replace(/^[-*\d.]+\s*/, '');
+            const idxTraco = semMarcador.indexOf(' — ');
+            if (idxTraco === -1) {
+                // Linha fora do formato esperado (ex.: uma observação geral solta) —
+                // exibida como item simples, sem cartão colorido.
+                return `<div class="insight-item"><span class="insight-icone">💡</span><span>${escapeHtml(semMarcador)}</span></div>`;
+            }
+
+            const nomeIa = semMarcador.slice(0, idxTraco).trim();
+            const diagnostico = semMarcador.slice(idxTraco + 3).trim();
+            const nomeIaNorm = normalizarTexto(nomeIa);
+            const grupo = comGrupos.find(p => normalizarTexto(p.parceiro) === nomeIaNorm)
+                || comGrupos.find(p => nomeIaNorm.includes(normalizarTexto(p.parceiro)) || normalizarTexto(p.parceiro).includes(nomeIaNorm));
+
+            const cor = grupo ? grupo.cor : '#94a3b8';
+            const nomeExibido = grupo ? grupo.parceiro : nomeIa;
+            const taxaTexto = grupo && grupo.taxa !== null ? formatarPct(grupo.taxa) : null;
+
+            return `
+                <div class="analise-item">
+                    <span class="analise-dot" style="background:${cor}"></span>
+                    <div class="analise-corpo">
+                        <div class="analise-cabecalho">
+                            <span class="analise-nome">${escapeHtml(nomeExibido)}</span>
+                            ${taxaTexto ? `<span class="analise-taxa">${taxaTexto} de taxa</span>` : ''}
+                        </div>
+                        <p class="analise-texto">${escapeHtml(diagnostico)}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
-    function formatarDicasIA(itens) {
-        return itens.map(item => `<div class="insight-item"><span class="insight-icone">💡</span><span>${escapeHtml(item)}</span></div>`).join('');
+    // Cada linha da IA vem como "Cultura — Motivo :: dica"; aqui casamos a combinação
+    // com os dados reais (kg e % já calculados — não confiamos nesses números vindos
+    // da IA) e montamos um cartão por combinação, em vez de um parágrafo solto.
+    function formatarDicasPorCombo(texto, combos) {
+        const linhasBrutas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+        const itensParaImpressao = [];
+
+        const html = linhasBrutas.map((linhaBruta, idx) => {
+            const linha = linhaBruta.replace(/^[-*\d.]+\s*/, '');
+            const idxSep = linha.indexOf('::');
+            if (idxSep === -1) {
+                // Linha fora do formato esperado (ex.: uma observação geral solta) —
+                // exibida como item simples, sem cartão colorido.
+                itensParaImpressao.push(linha);
+                return `<div class="insight-item"><span class="insight-icone">💡</span><span>${escapeHtml(linha)}</span></div>`;
+            }
+
+            const idParte = linha.slice(0, idxSep).trim();
+            const dica = linha.slice(idxSep + 2).trim();
+            const idxTraco = idParte.indexOf(' — ');
+            const classeIa = idxTraco === -1 ? idParte : idParte.slice(0, idxTraco).trim();
+            const motivoIa = idxTraco === -1 ? '' : idParte.slice(idxTraco + 3).trim();
+
+            const combo = combos.find(c => normalizarTexto(c.classe) === normalizarTexto(classeIa) && normalizarTexto(c.motivo) === normalizarTexto(motivoIa))
+                || combos.find(c => normalizarTexto(c.classe) === normalizarTexto(classeIa));
+
+            const cor = PALETA_CATEGORICA[(combo ? combos.indexOf(combo) : idx) % PALETA_CATEGORICA.length];
+            const rotulo = combo ? `${combo.classe} · ${combo.motivo}` : idParte;
+            const badge = combo ? `${formatarKg(combo.kg)} (${formatarPct(combo.percentual)})` : null;
+
+            itensParaImpressao.push(`${rotulo}: ${dica}`);
+
+            return `
+                <div class="analise-item">
+                    <span class="analise-dot" style="background:${cor}"></span>
+                    <div class="analise-corpo">
+                        <div class="analise-cabecalho">
+                            <span class="analise-nome">${escapeHtml(rotulo)}</span>
+                            ${badge ? `<span class="analise-taxa">${badge}</span>` : ''}
+                        </div>
+                        <p class="analise-texto">${escapeHtml(dica)}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return { html, itensParaImpressao };
     }
 
     function escapeHtml(str) {
@@ -3441,10 +3851,21 @@ ${listaGrupos}`;
         const mensagem = document.getElementById('comparacaoMensagem');
         if (!mensagem) return; // painel de comparação ainda não foi montado
 
+        // Badge do período sempre atualizado primeiro — mesmo sem parceiros
+        // selecionados ainda, já deixa claro qual recorte de datas será usado.
+        const periodoTexto = document.getElementById('comparacaoPeriodoTexto');
+        const dataInicioBadge = document.getElementById('filtroDe').value;
+        const dataFimBadge = document.getElementById('filtroAte').value;
+        if (periodoTexto) {
+            periodoTexto.textContent = (dataInicioBadge && dataFimBadge)
+                ? `${formatarDataLonga(dataInicioBadge)} a ${formatarDataLonga(dataFimBadge)}`
+                : '—';
+        }
+
         atualizarDisponibilidadeParceirosComparacao();
 
         const secoesResultado = [
-            'comparacaoGraficosSecao', 'comparacaoAnaliseSecao', 'comparacaoTabelaSecao'
+            'comparacaoPlacarSecao', 'comparacaoGraficosSecao', 'comparacaoGraficoMotivoSecao', 'comparacaoAnaliseSecao', 'comparacaoTabelaSecao'
         ].map(id => document.getElementById(id));
         const selecionados = [...filtrosMulti.compararParceiros];
         const selecionadosNorm = new Set(selecionados.map(normalizarTexto));
@@ -3496,12 +3917,21 @@ ${listaGrupos}`;
         // Cada linha vira um "grupo": os parceiros selecionados individualmente, um por
         // um, e (se o checkbox estiver ativo) mais um grupo único com todos os demais
         // somados — assim dá pra comparar 1 parceiro específico contra o resto inteiro.
-        const grupos = selecionados.map(nome => ({ rotulo: nome, chaves: new Set([normalizarTexto(nome)]) }));
+        // Cada parceiro recebe uma cor fixa da paleta categórica (na ordem em que foi
+        // selecionado) — a mesma cor identifica esse parceiro no cartão Frente a Frente
+        // e em todos os gráficos da aba. "Demais Parceiros" é sempre o cinza neutro,
+        // por ser um grupo de contexto e não um parceiro específico.
+        const grupos = selecionados.map((nome, i) => ({
+            rotulo: nome,
+            chaves: new Set([normalizarTexto(nome)]),
+            cor: PALETA_CATEGORICA[i % PALETA_CATEGORICA.length]
+        }));
         if (restantes.length) {
             grupos.push({
                 rotulo: `Demais Parceiros (${restantes.length})`,
                 chaves: new Set(restantes.map(normalizarTexto)),
-                isGrupo: true
+                isGrupo: true,
+                cor: COR_OUTROS
             });
         }
 
@@ -3526,6 +3956,7 @@ ${listaGrupos}`;
             return {
                 parceiro: grupo.rotulo,
                 isGrupo: !!grupo.isGrupo,
+                cor: grupo.cor,
                 kgProduzido,
                 kgDescartado,
                 taxa: kgProduzido ? (kgDescartado / kgProduzido * 100) : null,
@@ -3539,6 +3970,7 @@ ${listaGrupos}`;
 
         ultimasLinhasComparacao = linhas;
 
+        renderizarPlacarComparacao(linhas);
         renderizarTabelaComparacao(linhas);
         renderizarGraficosComparacao(linhas);
 
@@ -3555,6 +3987,93 @@ ${listaGrupos}`;
         };
     }
 
+    // ── Cartões "Frente a Frente": um por parceiro/grupo, com a taxa em destaque e
+    // pontos positivos/de atenção calculados automaticamente a partir dos números —
+    // é a resposta direta a "quais os pontos fortes e fracos de cada um?". ──
+    function renderizarPlacarComparacao(linhas) {
+        const container = document.getElementById('comparacaoPlacar');
+        if (!container) return;
+
+        const comTaxa = linhas.filter(p => p.taxa !== null);
+        const haDisputa = comTaxa.length >= 2;
+        const melhorTaxa = haDisputa ? Math.min(...comTaxa.map(p => p.taxa)) : null;
+        const piorTaxa = haDisputa ? Math.max(...comTaxa.map(p => p.taxa)) : null;
+        const taxasDiferem = haDisputa && melhorTaxa !== piorTaxa;
+        const maiorProducao = Math.max(...linhas.map(p => p.kgProduzido));
+
+        container.innerHTML = linhas.map(p => {
+            const positivos = [];
+            const atencao = [];
+
+            if (p.taxa === null) {
+                atencao.push(`Sem produção registrada no período — não dá para calcular a taxa de descarte${p.kgDescartado > 0 ? ` (mesmo assim descartou ${formatarKg(p.kgDescartado)})` : ''}.`);
+            } else {
+                if (taxasDiferem && p.taxa === melhorTaxa) {
+                    positivos.push('Menor taxa de descarte da comparação — é a referência do grupo.');
+                    if (comTaxa.length === 2) {
+                        const rival = comTaxa.find(o => o !== p);
+                        positivos.push(`Leva vantagem sobre ${escapeHtml(rival.parceiro)}: ${formatarPct(melhorTaxa)} contra ${formatarPct(piorTaxa)} de taxa de descarte.`);
+                    }
+                }
+                if (taxasDiferem && p.taxa === piorTaxa) atencao.push('Maior taxa de descarte da comparação.');
+                if (p.taxa <= META_LIMITE) positivos.push(`Dentro da meta: descartou ${formatarPct(p.taxa)} da própria produção (meta: até ${META_LIMITE}%).`);
+                else atencao.push(`Acima da meta de ${META_LIMITE}%: descartou ${formatarPct(p.taxa)} da própria produção.`);
+            }
+
+            if (linhas.length > 1 && p.kgProduzido > 0 && p.kgProduzido === maiorProducao) {
+                positivos.push('Maior volume produzido do conjunto comparado.');
+            }
+
+            if (p.kgDescartado === 0) {
+                positivos.push('Nenhum descarte registrado no período.');
+            } else {
+                if (p.motivoTopPct !== null && p.motivoTopPct >= 35) {
+                    atencao.push(`O motivo "${escapeHtml(p.motivoTop)}" concentra ${formatarPct(p.motivoTopPct)} do descarte dele — foco claro de melhoria.`);
+                } else if (p.motivoTopPct !== null) {
+                    positivos.push(`Descarte espalhado entre vários motivos, nenhum domina (o maior, "${escapeHtml(p.motivoTop)}", responde por ${formatarPct(p.motivoTopPct)}).`);
+                }
+
+                const piorDiaGrupo = Object.entries(p.diasSemana).sort((a, b) => b[1] - a[1])[0];
+                if (piorDiaGrupo) {
+                    const pctDia = piorDiaGrupo[1] / p.kgDescartado * 100;
+                    if (pctDia >= 35) atencao.push(`${NOMES_DIA_SEMANA[Number(piorDiaGrupo[0])]} concentra ${formatarPct(pctDia)} do descarte dele — vale revisar a rotina desse dia.`);
+                }
+            }
+
+            const chips = [
+                (taxasDiferem && p.taxa === melhorTaxa) ? '<span class="vs-chip melhor">🏆 Melhor taxa</span>' : '',
+                (taxasDiferem && p.taxa === piorTaxa) ? '<span class="vs-chip pior">Maior taxa</span>' : ''
+            ].join('');
+
+            const itens = (lista, vazio) => lista.length
+                ? lista.map(t => `<div class="vs-item"><span class="vs-ico">•</span><span>${t}</span></div>`).join('')
+                : `<div class="vs-vazio">${vazio}</div>`;
+
+            return `
+                <div class="card vs-card" style="--vs-cor:${p.cor}">
+                    <div class="vs-header">
+                        <span class="vs-dot"></span>
+                        <span class="vs-nome">${p.isGrupo ? `<em>${escapeHtml(p.parceiro)}</em>` : escapeHtml(p.parceiro)}</span>
+                        ${chips}
+                    </div>
+                    <div class="vs-taxa">
+                        <span class="vs-taxa-valor">${p.taxa === null ? '—' : formatarPct(p.taxa)}</span>
+                        <span class="vs-taxa-sub">da produção dele foi descartada no período</span>
+                    </div>
+                    <div class="vs-metricas">
+                        <div><div class="vs-metrica-label">Produzido</div><div class="vs-metrica-valor">${formatarKg(p.kgProduzido)}</div></div>
+                        <div><div class="vs-metrica-label">Descartado</div><div class="vs-metrica-valor">${formatarKg(p.kgDescartado)}</div></div>
+                        <div><div class="vs-metrica-label">Motivo nº 1</div><div class="vs-metrica-valor">${escapeHtml(p.motivoTop)}</div></div>
+                    </div>
+                    <div class="vs-secao-titulo pos">✔ Pontos positivos</div>
+                    ${itens(positivos, 'Nada de destaque neste período.')}
+                    <div class="vs-secao-titulo neg">⚠ Pontos de atenção</div>
+                    ${itens(atencao, 'Nenhum ponto de atenção — bom sinal.')}
+                </div>
+            `;
+        }).join('');
+    }
+
     function renderizarTabelaComparacao(linhas) {
         document.getElementById('corpoComparacaoTabela').innerHTML = linhas.map(p => `
             <tr>
@@ -3567,37 +4086,54 @@ ${listaGrupos}`;
         `).join('');
     }
 
-    // Paleta usada pra identificar cada parceiro/grupo nos dois gráficos — precisa ser
-    // diferente da PALETA_MOTIVOS porque aqui as cores representam parceiros, não motivos.
-    const PALETA_COMPARACAO = ['#065f46', '#059669', '#10b981', '#34d399', '#0891b2', '#f59e0b', '#e11d48', '#7c3aed', '#94a3b8', '#0369a1'];
-
     function renderizarGraficosComparacao(linhas) {
         if (chartComparacaoTaxa) chartComparacaoTaxa.destroy();
         if (chartComparacaoMotivo) chartComparacaoMotivo.destroy();
         if (chartComparacaoDiaSemanaGrupos) chartComparacaoDiaSemanaGrupos.destroy();
+
+        // Rótulos dos gráficos agrupados (Motivo/Dia da Semana por parceiro): com
+        // vários parceiros lado a lado, só rotula barras com valor de verdade — uma
+        // barra em 0% ganhando "0,0%" flutuando só faria poluição visual.
+        const rotulosGrupo = Object.assign({
+            display: ctx => mostrarRotulos && ctx.dataset.data[ctx.dataIndex] > 0,
+            anchor: 'end', align: 'end', offset: 2,
+            font: { weight: '700', size: 8.5 },
+            formatter: v => formatarPct(v)
+        }, ESTILO_ROTULO_CHIP, { padding: { top: 2, bottom: 1, left: 4, right: 4 } });
 
         const ctxTaxa = document.getElementById('graficoComparacaoTaxa');
         chartComparacaoTaxa = new Chart(ctxTaxa, {
             type: 'bar',
             data: {
                 labels: linhas.map(p => p.parceiro),
-                datasets: [{
-                    label: '% Taxa de Descarte',
+                datasets: [Object.assign({
+                    label: '% da produção descartada',
                     data: linhas.map(p => p.taxa || 0),
-                    backgroundColor: linhas.map(p => corPct(p.taxa || 0))
-                }]
+                    backgroundColor: linhas.map(p => p.cor)
+                }, ESTILO_BARRA)]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    datalabels: {
-                        display: mostrarRotulos, color: '#065f46', anchor: 'end', align: 'end',
+                    linhaMeta: { valor: META_LIMITE, eixo: 'x' },
+                    datalabels: Object.assign({
+                        display: mostrarRotulos, anchor: 'end', align: 'end',
                         offset: 4, font: { weight: '700', size: 10 }, formatter: v => formatarPct(v)
+                    }, ESTILO_ROTULO_CHIP),
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => {
+                                const p = linhas[ctx.dataIndex];
+                                if (p.taxa === null) return ' Sem produção registrada no período';
+                                const situacao = p.taxa <= META_LIMITE ? 'dentro da meta' : 'acima da meta';
+                                return ` Descartou ${formatarKg(p.kgDescartado)} de ${formatarKg(p.kgProduzido)} produzidos (${formatarPct(p.taxa)} — ${situacao})`;
+                            }
+                        }
                     }
                 },
-                scales: { x: { ticks: { callback: v => v + '%' } } }
+                scales: { x: { suggestedMax: META_LIMITE + 1, ticks: { callback: v => v + '%' } } }
             }
         });
 
@@ -3617,17 +4153,27 @@ ${listaGrupos}`;
             type: 'bar',
             data: {
                 labels: motivosUnicos,
-                datasets: linhas.map((p, i) => ({
+                datasets: linhas.map(p => (Object.assign({
                     label: p.parceiro,
                     data: motivosUnicos.map(motivo => p.kgDescartado ? ((p.motivos[motivo] || 0) / p.kgDescartado * 100) : 0),
-                    backgroundColor: PALETA_COMPARACAO[i % PALETA_COMPARACAO.length]
-                }))
+                    backgroundColor: p.cor
+                }, ESTILO_BARRA)))
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
+                layout: { padding: { top: 22 } },
                 plugins: {
-                    legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
-                    datalabels: { display: false }
+                    legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, borderRadius: 3, useBorderRadius: true, font: { size: 10 } } },
+                    datalabels: rotulosGrupo,
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => {
+                                const p = linhas[ctx.datasetIndex];
+                                const kg = p.motivos[motivosUnicos[ctx.dataIndex]] || 0;
+                                return ` ${p.parceiro}: ${formatarPct(ctx.parsed.y)} do descarte dele (${formatarKg(kg)})`;
+                            }
+                        }
+                    }
                 },
                 scales: { y: { ticks: { callback: v => v + '%' } } }
             }
@@ -3641,17 +4187,28 @@ ${listaGrupos}`;
             type: 'bar',
             data: {
                 labels: NOMES_DIA_SEMANA.map(n => n.slice(0, 3)),
-                datasets: linhas.map((p, i) => ({
+                datasets: linhas.map(p => (Object.assign({
                     label: p.parceiro,
                     data: NOMES_DIA_SEMANA.map((_, idx) => p.kgDescartado ? ((p.diasSemana[idx] || 0) / p.kgDescartado * 100) : 0),
-                    backgroundColor: PALETA_COMPARACAO[i % PALETA_COMPARACAO.length]
-                }))
+                    backgroundColor: p.cor
+                }, ESTILO_BARRA)))
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
+                layout: { padding: { top: 22 } },
                 plugins: {
-                    legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
-                    datalabels: { display: false }
+                    legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, borderRadius: 3, useBorderRadius: true, font: { size: 10 } } },
+                    datalabels: rotulosGrupo,
+                    tooltip: {
+                        callbacks: {
+                            title: itens => NOMES_DIA_SEMANA[itens[0].dataIndex],
+                            label: ctx => {
+                                const p = linhas[ctx.datasetIndex];
+                                const kg = p.diasSemana[ctx.dataIndex] || 0;
+                                return ` ${p.parceiro}: ${formatarPct(ctx.parsed.y)} do descarte dele (${formatarKg(kg)})`;
+                            }
+                        }
+                    }
                 },
                 scales: { y: { ticks: { callback: v => v + '%' } } }
             }
