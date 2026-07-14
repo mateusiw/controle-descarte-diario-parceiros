@@ -1297,6 +1297,7 @@
                 <button class="btn-atualizar" id="btnAtualizarResumo" type="button">Atualizar ⟳</button>
                 <button class="btn-imprimir" id="btnLimparFiltrosResumo" type="button">✖️ Limpar</button>
                 <button class="btn-imprimir" id="btnCapturarResumo" type="button">📸 Capturar Página (HD)</button>
+                <button class="btn-imprimir" id="btnCopiarResumo" type="button">📋 Copiar Dados</button>
             </div>
 
             <div class="card resumo-stats">
@@ -3347,6 +3348,38 @@
         `).join('') || '<tr><td colspan="9" style="text-align:center;">Sem registros para os filtros selecionados.</td></tr>';
     }
 
+    // Copia parceiro, kg descartado, motivo e cultura das linhas filtradas do Resumo
+    // (uma por linha, campos separados por TAB) para colar em outro documento/planilha.
+    async function copiarDadosResumo() {
+        const btn = document.getElementById('btnCopiarResumo');
+        if (!ultimasLinhasResumo.length) {
+            alert('Não há dados para copiar.');
+            return;
+        }
+
+        const ordenada = [...ultimasLinhasResumo].sort((a, b) => {
+            const chaveA = `${a.dataDescarte} ${a.horaDescarte}`;
+            const chaveB = `${b.dataDescarte} ${b.horaDescarte}`;
+            return ordenacaoResumoAsc ? chaveA.localeCompare(chaveB) : chaveB.localeCompare(chaveA);
+        });
+
+        const texto = ordenada.map(r => [
+            r.parceiro || '—',
+            Number(r.descartadoKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+            r.motivo || '—',
+            r.classe || '—'
+        ].join('\t')).join('\n');
+
+        try {
+            await navigator.clipboard.writeText(texto);
+            const textoOriginal = btn.textContent;
+            btn.textContent = '✅ Copiado!';
+            setTimeout(() => { btn.textContent = textoOriginal; }, 1500);
+        } catch (erro) {
+            alert('Não foi possível copiar os dados. Copie manualmente.');
+        }
+    }
+
     // Gera dicas práticas de como evitar os principais motivos de descarte (cruzados com a
     // cultura/classe) usando a API da Groq, com a chave informada pelo usuário no próprio painel.
     async function gerarDicasIA() {
@@ -4360,6 +4393,7 @@ ${listaGrupos}`;
     });
     document.getElementById('btnLimparFiltrosResumo').addEventListener('click', limparFiltrosResumo);
     document.getElementById('btnCapturarResumo').addEventListener('click', capturarResumo);
+    document.getElementById('btnCopiarResumo').addEventListener('click', copiarDadosResumo);
     ['resumoFiltroId', 'resumoFiltroClasse', 'resumoFiltroParceiro', 'resumoFiltroMotivo', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte'].forEach(id => {
         document.getElementById(id).addEventListener('change', aplicarFiltrosResumo);
     });
