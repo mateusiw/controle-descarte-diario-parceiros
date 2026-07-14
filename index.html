@@ -812,9 +812,12 @@
     .resumo-stats {
         display: flex;
         flex-wrap: wrap;
+        justify-content: center;
         gap: 24px;
         margin-bottom: 18px;
     }
+
+    .resumo-stats .stat-card { text-align: center; }
 
     .resumo-tabela-card .tabela-wrap { max-height: none; }
 
@@ -3192,6 +3195,11 @@
             return;
         }
         popularFiltrosResumo();
+        // Sem isso, o Resumo abre sem período nenhum selecionado e soma TODO o
+        // histórico de produção/descarte (em vez do período em uso no Painel),
+        // o que faz a produção por parceiro aparecer bem maior/errada aqui.
+        document.getElementById('resumoDescarteDe').value = document.getElementById('filtroDe').value;
+        document.getElementById('resumoDescarteAte').value = document.getElementById('filtroAte').value;
         aplicarFiltrosResumo();
         document.getElementById('modalResumo').classList.add('aberto');
     }
