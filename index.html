@@ -1267,16 +1267,40 @@
                     <select id="resumoFiltroId"><option value="">Todos</option></select>
                 </div>
                 <div class="filtro-campo">
-                    <label for="resumoFiltroClasse">Cultura</label>
-                    <select id="resumoFiltroClasse"><option value="">Todas</option></select>
+                    <label id="lblFiltroResumoClasse">Cultura</label>
+                    <div class="multiselect">
+                        <button type="button" class="multiselect-toggle" id="filtroResumoClasseToggle" aria-haspopup="true" aria-expanded="false">
+                            <span class="ms-label">Todas</span><span class="ms-seta">▾</span>
+                        </button>
+                        <div class="multiselect-painel" id="filtroResumoClassePainel" hidden>
+                            <input type="text" class="multiselect-busca" id="filtroResumoClasseBusca" placeholder="Pesquisar cultura...">
+                            <div class="multiselect-opcoes" id="filtroResumoClasseOpcoes"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="filtro-campo">
-                    <label for="resumoFiltroParceiro">Parceiro</label>
-                    <select id="resumoFiltroParceiro"><option value="">Todos</option></select>
+                    <label id="lblFiltroResumoParceiro">Parceiro</label>
+                    <div class="multiselect">
+                        <button type="button" class="multiselect-toggle" id="filtroResumoParceiroToggle" aria-haspopup="true" aria-expanded="false">
+                            <span class="ms-label">Todos</span><span class="ms-seta">▾</span>
+                        </button>
+                        <div class="multiselect-painel" id="filtroResumoParceiroPainel" hidden>
+                            <input type="text" class="multiselect-busca" id="filtroResumoParceiroBusca" placeholder="Pesquisar parceiro...">
+                            <div class="multiselect-opcoes" id="filtroResumoParceiroOpcoes"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="filtro-campo">
-                    <label for="resumoFiltroMotivo">Motivo</label>
-                    <select id="resumoFiltroMotivo"><option value="">Todos</option></select>
+                    <label id="lblFiltroResumoMotivo">Motivo</label>
+                    <div class="multiselect">
+                        <button type="button" class="multiselect-toggle" id="filtroResumoMotivoToggle" aria-haspopup="true" aria-expanded="false">
+                            <span class="ms-label">Todos</span><span class="ms-seta">▾</span>
+                        </button>
+                        <div class="multiselect-painel" id="filtroResumoMotivoPainel" hidden>
+                            <input type="text" class="multiselect-busca" id="filtroResumoMotivoBusca" placeholder="Pesquisar motivo...">
+                            <div class="multiselect-opcoes" id="filtroResumoMotivoOpcoes"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="filtro-campo">
                     <label>DT Descarte</label>
@@ -1519,7 +1543,8 @@
     // Conjunto vazio = "todos"; com 1+ valores, só passam registros que batem com algum deles.
     const filtrosMulti = {
         parceiro: new Set(), classe: new Set(), motivo: new Set(),
-        compararParceiros: new Set(), compararClasse: new Set(), compararMotivo: new Set()
+        compararParceiros: new Set(), compararClasse: new Set(), compararMotivo: new Set(),
+        resumoParceiro: new Set(), resumoClasse: new Set(), resumoMotivo: new Set()
     };
 
     // Lista de todos os parceiros do dataset — usada pela aba de Comparação pra saber
@@ -2613,9 +2638,10 @@
     function popularOpcoesMultiSelect(campo, valores) {
         const Campo = `${campo[0].toUpperCase()}${campo.slice(1)}`;
         const opcoes = document.getElementById(`filtro${Campo}Opcoes`);
+        const selecionados = filtrosMulti[campo];
         opcoes.innerHTML = valores.map(v => `
             <label class="multiselect-opcao">
-                <input type="checkbox" value="${escapeHtml(v)}"> ${escapeHtml(v)}
+                <input type="checkbox" value="${escapeHtml(v)}"${selecionados && selecionados.has(v) ? ' checked' : ''}> ${escapeHtml(v)}
             </label>
         `).join('');
     }
@@ -3235,16 +3261,24 @@
         const motivos = [...new Set(descarteCompleto.map(r => r.motivo).filter(Boolean))].sort();
 
         preencherSelectResumo(document.getElementById('resumoFiltroId'), ids, 'Todos');
-        preencherSelectResumo(document.getElementById('resumoFiltroClasse'), classes, 'Todas');
-        preencherSelectResumo(document.getElementById('resumoFiltroParceiro'), parceiros, 'Todos');
-        preencherSelectResumo(document.getElementById('resumoFiltroMotivo'), motivos, 'Todos');
+        popularOpcoesMultiSelect('resumoClasse', classes);
+        popularOpcoesMultiSelect('resumoParceiro', parceiros);
+        popularOpcoesMultiSelect('resumoMotivo', motivos);
+        atualizarRotuloMultiSelect('resumoClasse', 'Todas');
+        atualizarRotuloMultiSelect('resumoParceiro', 'Todos');
+        atualizarRotuloMultiSelect('resumoMotivo', 'Todos');
     }
 
     function limparFiltrosResumo() {
         document.getElementById('resumoFiltroId').value = '';
-        document.getElementById('resumoFiltroClasse').value = '';
-        document.getElementById('resumoFiltroParceiro').value = '';
-        document.getElementById('resumoFiltroMotivo').value = '';
+        ['resumoClasse', 'resumoParceiro', 'resumoMotivo'].forEach(campo => {
+            const Campo = `${campo[0].toUpperCase()}${campo.slice(1)}`;
+            document.getElementById(`filtro${Campo}Opcoes`).querySelectorAll('input[type="checkbox"]:checked').forEach(cb => cb.checked = false);
+            filtrosMulti[campo].clear();
+        });
+        atualizarRotuloMultiSelect('resumoClasse', 'Todas');
+        atualizarRotuloMultiSelect('resumoParceiro', 'Todos');
+        atualizarRotuloMultiSelect('resumoMotivo', 'Todos');
         document.getElementById('resumoDescarteDe').value = '';
         document.getElementById('resumoDescarteAte').value = '';
         document.getElementById('resumoColheitaDe').value = '';
@@ -3256,32 +3290,32 @@
         if (!descarteCompleto || !producaoCompleto) return;
 
         const idSelecionado = document.getElementById('resumoFiltroId').value;
-        const classe = document.getElementById('resumoFiltroClasse').value;
-        const parceiro = document.getElementById('resumoFiltroParceiro').value;
-        const motivo = document.getElementById('resumoFiltroMotivo').value;
+        const classes = [...filtrosMulti.resumoClasse];
+        const parceiros = [...filtrosMulti.resumoParceiro];
+        const motivos = [...filtrosMulti.resumoMotivo];
         const descarteDe = document.getElementById('resumoDescarteDe').value;
         const descarteAte = document.getElementById('resumoDescarteAte').value;
         const colheitaDe = document.getElementById('resumoColheitaDe').value;
         const colheitaAte = document.getElementById('resumoColheitaAte').value;
 
-        const classeNorm = classe ? normalizarTexto(classe) : '';
-        const parceiroNorm = parceiro ? normalizarTexto(parceiro) : '';
-        const motivoNorm = motivo ? normalizarTexto(motivo) : '';
+        const classesNorm = new Set(classes.map(normalizarTexto));
+        const parceirosNorm = new Set(parceiros.map(normalizarTexto));
+        const motivosNorm = new Set(motivos.map(normalizarTexto));
 
         const descarteFiltrado = descarteCompleto
             .filter(r => r.descartadoKg > 0)
             .filter(r => !idSelecionado || r.idExclusivo === idSelecionado)
-            .filter(r => !classeNorm || normalizarTexto(r.classe) === classeNorm)
-            .filter(r => !parceiroNorm || normalizarTexto(r.parceiro) === parceiroNorm)
-            .filter(r => !motivoNorm || normalizarTexto(r.motivo) === motivoNorm)
+            .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
+            .filter(r => !parceirosNorm.size || parceirosNorm.has(normalizarTexto(r.parceiro)))
+            .filter(r => !motivosNorm.size || motivosNorm.has(normalizarTexto(r.motivo)))
             .filter(r => !descarteDe || r.data >= descarteDe)
             .filter(r => !descarteAte || r.data <= descarteAte)
             .filter(r => !colheitaDe || (r.dataColheita && r.dataColheita >= colheitaDe))
             .filter(r => !colheitaAte || (r.dataColheita && r.dataColheita <= colheitaAte));
 
         const producaoFiltrada = producaoCompleto
-            .filter(r => !classeNorm || normalizarTexto(r.classe) === classeNorm)
-            .filter(r => !parceiroNorm || !r.parceiro || normalizarTexto(r.parceiro) === parceiroNorm)
+            .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
+            .filter(r => !parceirosNorm.size || !r.parceiro || parceirosNorm.has(normalizarTexto(r.parceiro)))
             .filter(r => !colheitaDe || r.data >= colheitaDe)
             .filter(r => !colheitaAte || r.data <= colheitaAte)
             .filter(r => !descarteDe || r.data >= descarteDe)
@@ -4345,6 +4379,9 @@ ${listaGrupos}`;
     configurarMultiSelect('parceiro', 'Todos', aplicarFiltros);
     configurarMultiSelect('classe', 'Todas', aplicarFiltros);
     configurarMultiSelect('motivo', 'Todos', aplicarFiltros);
+    configurarMultiSelect('resumoParceiro', 'Todos', aplicarFiltrosResumo);
+    configurarMultiSelect('resumoClasse', 'Todas', aplicarFiltrosResumo);
+    configurarMultiSelect('resumoMotivo', 'Todos', aplicarFiltrosResumo);
     // Clique em qualquer lugar fora de um multiselect fecha o painel aberto; clique
     // dentro do painel (nas checkboxes) não deve fechá-lo.
     document.addEventListener('click', (e) => {
@@ -4394,7 +4431,7 @@ ${listaGrupos}`;
     document.getElementById('btnLimparFiltrosResumo').addEventListener('click', limparFiltrosResumo);
     document.getElementById('btnCapturarResumo').addEventListener('click', capturarResumo);
     document.getElementById('btnCopiarResumo').addEventListener('click', copiarDadosResumo);
-    ['resumoFiltroId', 'resumoFiltroClasse', 'resumoFiltroParceiro', 'resumoFiltroMotivo', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte'].forEach(id => {
+    ['resumoFiltroId', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte'].forEach(id => {
         document.getElementById(id).addEventListener('change', aplicarFiltrosResumo);
     });
     document.getElementById('thResumoData').addEventListener('click', () => {
