@@ -1076,7 +1076,7 @@
            com as duas datas lado a lado, e os botões avulsos ocupam a linha toda. */
         .filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; padding: 14px; }
         .filtro-campo:has(.filtro-periodo) { grid-column: 1 / -1; }
-        .filtros > .btn-atualizar, .filtros > .btn-imprimir { grid-column: 1 / -1; }
+        .filtros > .btn-atualizar, .filtros > .btn-imprimir, .filtros > .checkbox-linha { grid-column: 1 / -1; }
         .filtro-periodo span { display: none; }
         .filtro-periodo input { flex: 1; min-width: 0; }
         .filtro-campo input, .filtro-campo select, .modal-campo input, .multiselect-toggle {
@@ -1322,6 +1322,10 @@
                 <button class="btn-imprimir" id="btnLimparFiltrosResumo" type="button">✖️ Limpar</button>
                 <button class="btn-imprimir" id="btnCapturarResumo" type="button">📸 Capturar Página (HD)</button>
                 <button class="btn-imprimir" id="btnCopiarResumo" type="button">📋 Copiar Dados</button>
+                <label class="checkbox-linha" title="Sítios que dividem o descarte entre dois nomes (ex.: Sítio Leitão) passam a aparecer como duas linhas, uma para cada nome, em vez do total somado">
+                    <input type="checkbox" id="resumoPesoSeparadoToggle">
+                    Mostrar peso separado
+                </label>
             </div>
 
             <div class="card resumo-stats">
@@ -1526,6 +1530,7 @@
     let mostrarRotulos = false;
     let sequenciaCarga = 0;
     let descarteCompleto = null;
+    let descarteCompletoSeparado = null;
     let producaoCompleto = null;
     let ordemTabelaAsc = false;
     let tabelaExpandida = false;
@@ -1625,7 +1630,7 @@
         return String(str).toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
     }
 
-    // Sítio Rafael e Sítio Reginaldo são o mesmo parceiro na prática — unifica os dois
+    // Sítio Rafael e Sítio Reginaldo são o mesmo sítio na prática — unifica os dois
     // sob o nome "Sítio Leitão" em toda a base antes de filtrar/agregar qualquer coisa.
     const PARCEIROS_UNIFICADOS = {
         [normalizarTexto('Sítio Rafael')]: 'Sítio Leitão',
@@ -1636,24 +1641,34 @@
         return PARCEIROS_UNIFICADOS[normalizarTexto(nome)] || nome;
     }
 
-    // Depois de unificar Sítio Rafael/Reginaldo em Sítio Leitão, o mesmo lançamento pode
-    // ter sido registrado uma vez para cada nome antigo — remove essa duplicata exata
-    // (mesmo ID, data, hora, motivo e peso) pra não contar o mesmo descarte duas vezes.
-    function removerDescartesDuplicados(lista) {
-        const vistos = new Set();
-        return lista.filter(r => {
-            const chave = [r.idExclusivo, r.data, r.horaDescarte, r.parceiro, r.motivo, r.classe, r.descartadoKg].join('|');
-            if (vistos.has(chave)) return false;
-            vistos.add(chave);
-            return true;
+    // Depois de unificar Sítio Rafael/Reginaldo em Sítio Leitão, cada lançamento existe
+    // como duas linhas (uma pra cada nome antigo), cada uma com parte do peso total —
+    // soma as duas num único registro pra não exibir o descarte pela metade. As linhas
+    // originais (não somadas, com o nome antigo preservado em "origemParceiro") ficam
+    // guardadas à parte pra quem quiser ver o peso dividido entre os dois sítios.
+    function somarDescartesDoMesmoEvento(lista) {
+        const grupos = new Map();
+        lista.forEach(r => {
+            const chave = [r.idExclusivo, r.data, r.horaDescarte, r.parceiro, r.motivo, r.classe].join('|');
+            const existente = grupos.get(chave);
+            if (existente) existente.descartadoKg += r.descartadoKg;
+            else grupos.set(chave, { ...r });
         });
+        return [...grupos.values()];
     }
 
     function aplicarUnificacaoParceiros(json) {
         if (!json) return json;
-        if (Array.isArray(json.descarte)) {
-            json.descarte.forEach(r => { r.parceiro = unificarParceiro(r.parceiro); });
-            json.descarte = removerDescartesDuplicados(json.descarte);
+        // "descarteSeparado" já presente = este objeto já passou por aqui antes (ex.:
+        // veio do cache, que guarda o resultado já processado) — pular pra não
+        // reprocessar json.descarte (nesse ponto já somado) por cima do separado bom.
+        if (Array.isArray(json.descarte) && !json.descarteSeparado) {
+            json.descarte.forEach(r => {
+                r.origemParceiro = r.parceiro;
+                r.parceiro = unificarParceiro(r.parceiro);
+            });
+            json.descarteSeparado = json.descarte;
+            json.descarte = somarDescartesDoMesmoEvento(json.descarte);
         }
         if (Array.isArray(json.producao)) json.producao.forEach(r => { if (r.parceiro) r.parceiro = unificarParceiro(r.parceiro); });
         if (Array.isArray(json.parceiros)) json.parceiros = [...new Set(json.parceiros.map(unificarParceiro))].sort();
@@ -3302,7 +3317,10 @@
         const parceirosNorm = new Set(parceiros.map(normalizarTexto));
         const motivosNorm = new Set(motivos.map(normalizarTexto));
 
-        const descarteFiltrado = descarteCompleto
+        const pesoSeparado = document.getElementById('resumoPesoSeparadoToggle').checked;
+        const fonteDescarte = (pesoSeparado && descarteCompletoSeparado) ? descarteCompletoSeparado : descarteCompleto;
+
+        const descarteFiltrado = fonteDescarte
             .filter(r => r.descartadoKg > 0)
             .filter(r => !idSelecionado || r.idExclusivo === idSelecionado)
             .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
@@ -3327,26 +3345,26 @@
         document.getElementById('resumoStatDescarte').textContent = formatarKg(dados.descarteTotal);
         document.getElementById('resumoStatPercentual').textContent = formatarPct(dados.percentualDescarte);
 
-        // Produção de referência de cada linha: soma da produção do parceiro dentro do
-        // período/filtros ativos (mesmo total do card "Produção Total" acima) — produção
-        // e descarte nem sempre são lançados na planilha no mesmo dia, então casar por
-        // parceiro é mais confiável do que tentar casar por data.
-        const producaoPorParceiro = {};
+        // Produção de referência de cada linha: soma da produção do parceiro lançada
+        // exatamente na DT Colheita daquela linha (não o total do período) — mostra
+        // quanto daquela colheita específica virou descarte. Fica 0 se não houver
+        // produção lançada nesse dia exato pra esse parceiro.
+        const producaoPorParceiroData = {};
         producaoFiltrada.forEach(r => {
             if (!r.parceiro) return;
-            const chave = normalizarTexto(r.parceiro);
-            producaoPorParceiro[chave] = (producaoPorParceiro[chave] || 0) + r.producaoKg;
+            const chave = `${normalizarTexto(r.parceiro)}|${r.data}`;
+            producaoPorParceiroData[chave] = (producaoPorParceiroData[chave] || 0) + r.producaoKg;
         });
 
         ultimasLinhasResumo = descarteFiltrado.map(r => {
-            const producaoRef = producaoPorParceiro[normalizarTexto(r.parceiro)] || dados.producaoTotal || 0;
+            const producaoRef = producaoPorParceiroData[`${normalizarTexto(r.parceiro)}|${r.dataColheita}`] || 0;
             const percentual = producaoRef ? (r.descartadoKg / producaoRef * 100) : 0;
             return {
                 idExclusivo: r.idExclusivo,
                 dataColheita: r.dataColheita,
                 dataDescarte: r.data,
                 horaDescarte: r.horaDescarte,
-                parceiro: r.parceiro,
+                parceiro: pesoSeparado ? (r.origemParceiro || r.parceiro) : r.parceiro,
                 motivo: r.motivo,
                 classe: r.classe,
                 producaoKg: producaoRef,
@@ -4309,6 +4327,7 @@ ${listaGrupos}`;
             aplicarUnificacaoParceiros(cacheDescarte.dados);
             aplicarUnificacaoParceiros(cacheProducao.dados);
             descarteCompleto = cacheDescarte.dados.descarte;
+            descarteCompletoSeparado = cacheDescarte.dados.descarteSeparado;
             producaoCompleto = cacheProducao.dados.producao;
             preencherFiltros(cacheDescarte.dados);
             aplicarFiltros();
@@ -4353,6 +4372,7 @@ ${listaGrupos}`;
             if (minhaSequencia !== sequenciaCarga) return; // uma requisição mais nova já está em andamento
 
             descarteCompleto = jsonDescarte.descarte;
+            descarteCompletoSeparado = jsonDescarte.descarteSeparado;
             producaoCompleto = jsonProducao.producao;
             preencherFiltros(jsonDescarte);
             aplicarFiltros();
@@ -4431,7 +4451,7 @@ ${listaGrupos}`;
     document.getElementById('btnLimparFiltrosResumo').addEventListener('click', limparFiltrosResumo);
     document.getElementById('btnCapturarResumo').addEventListener('click', capturarResumo);
     document.getElementById('btnCopiarResumo').addEventListener('click', copiarDadosResumo);
-    ['resumoFiltroId', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte'].forEach(id => {
+    ['resumoFiltroId', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte', 'resumoPesoSeparadoToggle'].forEach(id => {
         document.getElementById(id).addEventListener('change', aplicarFiltrosResumo);
     });
     document.getElementById('thResumoData').addEventListener('click', () => {
