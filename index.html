@@ -180,6 +180,11 @@
         transition: border-color 0.15s, box-shadow 0.15s;
     }
 
+    /* Sem isso o select de ID fica bem mais estreito que os multiselects ao lado
+       (Cultura/Parceiro/Motivo já têm min-width:170px no .multiselect-toggle),
+       quebrando o alinhamento da linha de filtros. */
+    .filtro-campo select { min-width: 170px; }
+
     .filtro-campo input:focus,
     .filtro-campo select:focus {
         border-color: var(--emerald-500);
@@ -190,9 +195,11 @@
     .filtro-periodo span { font-size: 0.75rem; color: var(--text-secondary); }
 
     /* ── Datas específicas (Resumo): alternativa ao período De/Até — permite somar
-       só os dias escolhidos (ex.: 11/07, 14/07 e 18/07), ignorando os dias entre eles. ── */
-    .filtro-campo-datas-especificas { min-width: 220px; }
-    .datas-especificas-linha { display: flex; align-items: center; gap: 6px; }
+       só os dias escolhidos (ex.: 11/07, 14/07 e 18/07), ignorando os dias entre eles.
+       O input+botão ficam limitados a 420px (não faz sentido esticar isso pela
+       linha toda); quem garante a linha inteira pro campo é o .filtro-campo-datas-
+       especificas em si (sem max-width), lá embaixo. ── */
+    .datas-especificas-linha { display: flex; align-items: center; gap: 6px; max-width: 420px; }
     .datas-especificas-linha input[type="date"] { flex: 1; min-width: 0; }
 
     .btn-add-data {
@@ -210,13 +217,19 @@
     }
     .btn-add-data:hover { background: var(--emerald-50); }
 
+    /* Em vez de quebrar linha, os chips continuam em fileira única, com scroll
+       horizontal quando não couberem todos — assim a altura do card não cresce
+       conforme mais datas são adicionadas. */
     .datas-especificas-chips {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         gap: 6px;
         margin-top: 6px;
+        overflow-x: auto;
+        padding-bottom: 4px;
     }
-    .datas-especificas-chips:empty { margin-top: 0; }
+    .datas-especificas-chips:empty { margin-top: 0; padding-bottom: 0; }
+    .datas-especificas-chips .data-chip { flex-shrink: 0; }
 
     .data-chip {
         display: inline-flex;
@@ -245,15 +258,16 @@
 
     /* ── Filtros alternativos (Resumo): esconde DT Descarte/DT Colheita (período)
        atrás de um <details> recolhido, já que "Datas Específicas" cobre o caso de uso
-       mais comum e esses dois viviam ocupando espaço mesmo quando não usados. ── */
+       mais comum e esses dois viviam ocupando espaço mesmo quando não usados. Sem
+       padding lateral no <summary>, pra ficar alinhado com o início dos campos de
+       cima (ID, Cultura...) em vez de parecer um elemento à parte, deslocado. ── */
     .filtros-alternativos {
         width: 100%;
-        border: 1px dashed var(--card-border);
-        border-radius: 10px;
-        padding: 8px 12px;
+        margin-top: 2px;
     }
     .filtros-alternativos summary {
         cursor: pointer;
+        padding: 6px 0;
         font-size: 0.72rem;
         font-weight: 700;
         color: var(--text-secondary);
@@ -268,8 +282,23 @@
         display: flex;
         flex-wrap: wrap;
         gap: 12px 16px;
-        margin-top: 10px;
+        margin-top: 8px;
+        padding-top: 12px;
+        border-top: 1px dashed var(--card-border);
     }
+
+    /* Datas Específicas cresce em altura conforme mais datas são adicionadas (os
+       chips quebram em várias linhas). Enquanto ele dividia a linha com ID/Cultura/
+       Parceiro/Motivo, o "align-items: flex-end" do .filtros empurrava esses campos
+       curtos pra baixo, acompanhando a altura crescente — por isso ficava torto. Com
+       "flex-basis: 100%" ele vira sua própria linha, logo abaixo de ID/Cultura/
+       Parceiro/Motivo e antes do "Filtros alternativos" — o mesmo lugar que antes
+       era só do "Filtros alternativos". Importante: SEM max-width aqui (isso tem
+       que ficar só no conteúdo interno, .datas-especificas-linha/-chips lá em cima)
+       — um max-width aqui "encolhe" o tamanho hipotético usado no cálculo de quebra
+       de linha do flex, e o item deixa de forçar a própria linha, voltando a
+       flutuar ao lado de ID/Cultura/Parceiro/Motivo. */
+    .resumo-filtros > .filtro-campo-datas-especificas { flex: 1 1 100%; width: 100%; min-width: 240px; }
 
     /* ── Abas (Painel / Comparar Parceiros) ── */
     .abas-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -340,6 +369,51 @@
     }
 
     .checkbox-linha input { accent-color: var(--emerald-600); width: 16px; height: 16px; cursor: pointer; }
+
+    /* ── Switch moderno (usado no "Mostrar peso separado" do Resumo) — substitui o
+       checkbox quadrado nativo por uma trilha com bolinha deslizante. O <input>
+       continua ali (só fica invisível), então nada muda no JS: mesmo id, mesmo
+       .checked, mesmo evento "change". ── */
+    .toggle-switch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        width: 38px;
+        height: 22px;
+        flex-shrink: 0;
+    }
+    .toggle-switch input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 1;
+    }
+    .toggle-switch-trilho {
+        position: absolute;
+        inset: 0;
+        background: #d8e3dd;
+        border-radius: 999px;
+        transition: background 0.2s;
+    }
+    .toggle-switch-trilho::before {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 18px;
+        height: 18px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        transition: transform 0.2s;
+    }
+    .toggle-switch input:checked ~ .toggle-switch-trilho { background: var(--emerald-600); }
+    .toggle-switch input:checked ~ .toggle-switch-trilho::before { transform: translateX(16px); }
+    .toggle-switch input:focus-visible ~ .toggle-switch-trilho { box-shadow: 0 0 0 3px var(--emerald-100); }
 
     /* ── Multiselect dos filtros (Parceiro/Classe/Motivo): botão que abre um painel
        com checkboxes, permitindo escolher 0 (= todos), 1 ou vários valores ao mesmo tempo. ── */
@@ -946,9 +1020,9 @@
     }
 
     /* Barras de rolagem finas e discretas nas áreas que rolam por conta própria. */
-    .tabela-wrap::-webkit-scrollbar, .legenda-motivos::-webkit-scrollbar { width: 8px; height: 8px; }
-    .tabela-wrap::-webkit-scrollbar-thumb, .legenda-motivos::-webkit-scrollbar-thumb { background: #c3d6cd; border-radius: 999px; }
-    .tabela-wrap::-webkit-scrollbar-track, .legenda-motivos::-webkit-scrollbar-track { background: transparent; }
+    .tabela-wrap::-webkit-scrollbar, .legenda-motivos::-webkit-scrollbar, .datas-especificas-chips::-webkit-scrollbar { width: 8px; height: 8px; }
+    .tabela-wrap::-webkit-scrollbar-thumb, .legenda-motivos::-webkit-scrollbar-thumb, .datas-especificas-chips::-webkit-scrollbar-thumb { background: #c3d6cd; border-radius: 999px; }
+    .tabela-wrap::-webkit-scrollbar-track, .legenda-motivos::-webkit-scrollbar-track, .datas-especificas-chips::-webkit-scrollbar-track { background: transparent; }
 
     table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 
@@ -1188,6 +1262,7 @@
         .filtro-campo:has(.filtro-periodo) { grid-column: 1 / -1; }
         .filtros > .btn-atualizar, .filtros > .btn-imprimir, .filtros > .checkbox-linha { grid-column: 1 / -1; }
         .filtros > .filtros-alternativos { grid-column: 1 / -1; }
+        .filtros > .filtro-campo-datas-especificas { grid-column: 1 / -1; }
         .filtro-periodo span { display: none; }
         .filtro-periodo input { flex: 1; min-width: 0; }
         .filtro-campo input, .filtro-campo select, .modal-campo input, .multiselect-toggle {
@@ -1424,7 +1499,7 @@
                     </div>
                 </div>
                 <div class="filtro-campo filtro-campo-datas-especificas">
-                    <label>Datas Específicas (DT Descarte)</label>
+                    <label>Datas Específicas (DT Colheita)</label>
                     <div class="datas-especificas-linha">
                         <input type="date" id="resumoDataEspecificaInput">
                         <button type="button" class="btn-add-data" id="btnAdicionarDataEspecificaResumo">+ Adicionar</button>
@@ -1456,8 +1531,11 @@
                 <button class="btn-imprimir" id="btnLimparFiltrosResumo" type="button">✖️ Limpar</button>
                 <button class="btn-imprimir" id="btnCapturarResumo" type="button">📸 Capturar Página (HD)</button>
                 <button class="btn-imprimir" id="btnCopiarResumo" type="button">📋 Copiar Dados</button>
-                <label class="checkbox-linha" title="Sítios que dividem o descarte entre dois nomes (ex.: Sítio Leitão) passam a aparecer como duas linhas, uma para cada nome, em vez do total somado">
-                    <input type="checkbox" id="resumoPesoSeparadoToggle">
+                <label class="checkbox-linha toggle-switch-linha" title="Sítios que dividem o descarte entre dois nomes (ex.: Sítio Leitão) passam a aparecer como duas linhas, uma para cada nome, em vez do total somado">
+                    <span class="toggle-switch">
+                        <input type="checkbox" id="resumoPesoSeparadoToggle">
+                        <span class="toggle-switch-trilho"></span>
+                    </span>
                     Mostrar peso separado
                 </label>
             </div>
@@ -3387,13 +3465,10 @@
             return;
         }
         popularFiltrosResumo();
-        // Sem isso, o Resumo abre sem período nenhum selecionado e soma TODO o
-        // histórico de produção/descarte (em vez do período em uso no Painel),
-        // o que faz a produção por parceiro aparecer bem maior/errada aqui.
-        document.getElementById('resumoDescarteDe').value = document.getElementById('filtroDe').value;
-        document.getElementById('resumoDescarteAte').value = document.getElementById('filtroAte').value;
-        renderizarChipsDatasEspecificas();
-        aplicarFiltrosResumo();
+        // Sempre abre com os filtros zerados (nenhum período/seleção herdado de uma
+        // abertura anterior nem do painel principal) — evita o Resumo somar um
+        // recorte de datas que o usuário nem escolheu conscientemente ali dentro.
+        limparFiltrosResumo();
         document.getElementById('modalResumo').classList.add('aberto');
     }
 
@@ -3479,15 +3554,22 @@
             <span class="data-chip">${formatarDataBarra(data)}<button type="button" data-data="${data}" title="Remover">✕</button></span>
         `).join('');
 
-        // Enquanto houver datas avulsas escolhidas, o período De/Até vira redundante
-        // (a lista de datas manda) — desabilita pra deixar isso visualmente claro.
+        // Enquanto houver datas avulsas escolhidas, o período De/Até da DT Colheita
+        // vira redundante (a lista de datas manda) — desabilita pra deixar isso
+        // visualmente claro.
         const usando = datasOrdenadas.length > 0;
-        document.getElementById('resumoDescarteDe').disabled = usando;
-        document.getElementById('resumoDescarteAte').disabled = usando;
+        document.getElementById('resumoColheitaDe').disabled = usando;
+        document.getElementById('resumoColheitaAte').disabled = usando;
     }
 
     function aplicarFiltrosResumo() {
         if (!descarteCompleto || !producaoCompleto) return;
+
+        // Mesmo comportamento do painel principal: com Cultura/Motivo selecionados,
+        // o filtro Parceiro só lista quem tem registro naquela cultura/motivo (e
+        // desmarca quem deixou de bater — por isso roda antes de ler
+        // filtrosMulti.resumoParceiro abaixo).
+        atualizarDisponibilidadeParceiros('resumoParceiro', 'resumoClasse', 'resumoMotivo', 'Todos');
 
         const idSelecionado = document.getElementById('resumoFiltroId').value;
         const classes = [...filtrosMulti.resumoClasse];
@@ -3498,7 +3580,7 @@
         const colheitaDe = document.getElementById('resumoColheitaDe').value;
         const colheitaAte = document.getElementById('resumoColheitaAte').value;
         // Se houver datas avulsas escolhidas (chips), elas substituem o período
-        // De/Até da DT Descarte — soma só os dias marcados, ignorando os demais.
+        // De/Até da DT Colheita — soma só os dias marcados, ignorando os demais.
         const datasEspecificas = datasEspecificasResumo;
         const usarDatasEspecificas = datasEspecificas.size > 0;
 
@@ -3515,20 +3597,20 @@
             .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
             .filter(r => !parceirosNorm.size || parceirosNorm.has(normalizarTexto(r.parceiro)))
             .filter(r => !motivosNorm.size || motivosNorm.has(normalizarTexto(r.motivo)))
-            .filter(r => usarDatasEspecificas ? datasEspecificas.has(r.data) : true)
-            .filter(r => usarDatasEspecificas || !descarteDe || r.data >= descarteDe)
-            .filter(r => usarDatasEspecificas || !descarteAte || r.data <= descarteAte)
-            .filter(r => !colheitaDe || (r.dataColheita && r.dataColheita >= colheitaDe))
-            .filter(r => !colheitaAte || (r.dataColheita && r.dataColheita <= colheitaAte));
+            .filter(r => !descarteDe || r.data >= descarteDe)
+            .filter(r => !descarteAte || r.data <= descarteAte)
+            .filter(r => usarDatasEspecificas ? (r.dataColheita && datasEspecificas.has(r.dataColheita)) : true)
+            .filter(r => usarDatasEspecificas || !colheitaDe || (r.dataColheita && r.dataColheita >= colheitaDe))
+            .filter(r => usarDatasEspecificas || !colheitaAte || (r.dataColheita && r.dataColheita <= colheitaAte));
 
         const producaoFiltrada = producaoCompleto
             .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
             .filter(r => !parceirosNorm.size || !r.parceiro || parceirosNorm.has(normalizarTexto(r.parceiro)))
-            .filter(r => !colheitaDe || r.data >= colheitaDe)
-            .filter(r => !colheitaAte || r.data <= colheitaAte)
             .filter(r => usarDatasEspecificas ? datasEspecificas.has(r.data) : true)
-            .filter(r => usarDatasEspecificas || !descarteDe || r.data >= descarteDe)
-            .filter(r => usarDatasEspecificas || !descarteAte || r.data <= descarteAte);
+            .filter(r => usarDatasEspecificas || !colheitaDe || r.data >= colheitaDe)
+            .filter(r => usarDatasEspecificas || !colheitaAte || r.data <= colheitaAte)
+            .filter(r => !descarteDe || r.data >= descarteDe)
+            .filter(r => !descarteAte || r.data <= descarteAte);
 
         const dados = agregarDados(descarteFiltrado, producaoFiltrada);
 
