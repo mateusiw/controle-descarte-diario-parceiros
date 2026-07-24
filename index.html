@@ -189,6 +189,88 @@
     .filtro-periodo { display: flex; align-items: center; gap: 8px; }
     .filtro-periodo span { font-size: 0.75rem; color: var(--text-secondary); }
 
+    /* ── Datas específicas (Resumo): alternativa ao período De/Até — permite somar
+       só os dias escolhidos (ex.: 11/07, 14/07 e 18/07), ignorando os dias entre eles. ── */
+    .filtro-campo-datas-especificas { min-width: 220px; }
+    .datas-especificas-linha { display: flex; align-items: center; gap: 6px; }
+    .datas-especificas-linha input[type="date"] { flex: 1; min-width: 0; }
+
+    .btn-add-data {
+        border: 1px solid var(--emerald-500);
+        background: #fff;
+        color: var(--emerald-700);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        font-family: inherit;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .btn-add-data:hover { background: var(--emerald-50); }
+
+    .datas-especificas-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 6px;
+    }
+    .datas-especificas-chips:empty { margin-top: 0; }
+
+    .data-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--emerald-100);
+        color: var(--emerald-700);
+        border-radius: 999px;
+        padding: 4px 6px 4px 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .data-chip button {
+        border: none;
+        background: transparent;
+        color: inherit;
+        font-size: 0.75rem;
+        font-weight: 800;
+        line-height: 1;
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 999px;
+    }
+    .data-chip button:hover { background: rgba(0, 0, 0, 0.08); }
+
+    /* ── Filtros alternativos (Resumo): esconde DT Descarte/DT Colheita (período)
+       atrás de um <details> recolhido, já que "Datas Específicas" cobre o caso de uso
+       mais comum e esses dois viviam ocupando espaço mesmo quando não usados. ── */
+    .filtros-alternativos {
+        width: 100%;
+        border: 1px dashed var(--card-border);
+        border-radius: 10px;
+        padding: 8px 12px;
+    }
+    .filtros-alternativos summary {
+        cursor: pointer;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        list-style: none;
+    }
+    .filtros-alternativos summary::-webkit-details-marker { display: none; }
+    .filtros-alternativos summary::before { content: '▸ '; }
+    .filtros-alternativos[open] summary::before { content: '▾ '; }
+    .filtros-alternativos-corpo {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 16px;
+        margin-top: 10px;
+    }
+
     /* ── Abas (Painel / Comparar Parceiros) ── */
     .abas-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 
@@ -755,6 +837,34 @@
 
     .modal-salvar:hover { background: var(--emerald-700); }
 
+    /* ── Modal de aviso (substitui os alert() nativos do navegador por um popup
+       com a mesma identidade visual do resto do painel) ── */
+    .modal-aviso-overlay { z-index: 80; }
+
+    .modal-aviso-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+        max-width: 380px;
+    }
+
+    .modal-aviso-icone {
+        font-size: 2rem;
+        line-height: 1;
+    }
+
+    .modal-aviso-mensagem {
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .modal-aviso-acoes { justify-content: center; width: 100%; margin-top: 4px; }
+    .modal-aviso-acoes .modal-salvar { padding: 8px 28px; }
+
     /* ── Modal Resumo (tela cheia) ── */
     .modal-resumo-overlay {
         position: fixed;
@@ -1077,6 +1187,7 @@
         .filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; padding: 14px; }
         .filtro-campo:has(.filtro-periodo) { grid-column: 1 / -1; }
         .filtros > .btn-atualizar, .filtros > .btn-imprimir, .filtros > .checkbox-linha { grid-column: 1 / -1; }
+        .filtros > .filtros-alternativos { grid-column: 1 / -1; }
         .filtro-periodo span { display: none; }
         .filtro-periodo input { flex: 1; min-width: 0; }
         .filtro-campo input, .filtro-campo select, .modal-campo input, .multiselect-toggle {
@@ -1253,6 +1364,16 @@
     </div>
 </div>
 
+<div class="modal-overlay modal-aviso-overlay" id="modalAviso">
+    <div class="modal-card modal-aviso-card">
+        <div class="modal-aviso-icone" id="modalAvisoIcone">⚠️</div>
+        <p class="modal-aviso-mensagem" id="modalAvisoMensagem"></p>
+        <div class="modal-acoes modal-aviso-acoes">
+            <button class="modal-salvar" type="button" id="btnFecharAviso">Entendi</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-resumo-overlay" id="modalResumo">
     <div class="modal-resumo-painel">
         <div class="modal-resumo-header">
@@ -1302,22 +1423,35 @@
                         </div>
                     </div>
                 </div>
-                <div class="filtro-campo">
-                    <label>DT Descarte</label>
-                    <div class="filtro-periodo">
-                        <input type="date" id="resumoDescarteDe">
-                        <span>até</span>
-                        <input type="date" id="resumoDescarteAte">
+                <div class="filtro-campo filtro-campo-datas-especificas">
+                    <label>Datas Específicas (DT Descarte)</label>
+                    <div class="datas-especificas-linha">
+                        <input type="date" id="resumoDataEspecificaInput">
+                        <button type="button" class="btn-add-data" id="btnAdicionarDataEspecificaResumo">+ Adicionar</button>
                     </div>
+                    <div class="datas-especificas-chips" id="resumoDatasEspecificasChips"></div>
                 </div>
-                <div class="filtro-campo">
-                    <label>DT Colheita</label>
-                    <div class="filtro-periodo">
-                        <input type="date" id="resumoColheitaDe">
-                        <span>até</span>
-                        <input type="date" id="resumoColheitaAte">
+                <details class="filtros-alternativos">
+                    <summary>Filtros alternativos</summary>
+                    <div class="filtros-alternativos-corpo">
+                        <div class="filtro-campo">
+                            <label>DT Descarte</label>
+                            <div class="filtro-periodo">
+                                <input type="date" id="resumoDescarteDe">
+                                <span>até</span>
+                                <input type="date" id="resumoDescarteAte">
+                            </div>
+                        </div>
+                        <div class="filtro-campo">
+                            <label>DT Colheita</label>
+                            <div class="filtro-periodo">
+                                <input type="date" id="resumoColheitaDe">
+                                <span>até</span>
+                                <input type="date" id="resumoColheitaAte">
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </details>
                 <button class="btn-atualizar" id="btnAtualizarResumo" type="button">Atualizar ⟳</button>
                 <button class="btn-imprimir" id="btnLimparFiltrosResumo" type="button">✖️ Limpar</button>
                 <button class="btn-imprimir" id="btnCapturarResumo" type="button">📸 Capturar Página (HD)</button>
@@ -1540,6 +1674,9 @@
     let ultimasDicasIA = [];
     let ultimasLinhasResumo = [];
     let ordenacaoResumoAsc = false;
+    // Datas avulsas escolhidas no Resumo (ex.: 11/07, 14/07, 18/07) — quando
+    // preenchidas, substituem o filtro de período De/Até da DT Descarte.
+    let datasEspecificasResumo = new Set();
     let ultimasLinhasComparacao = null;
     let ultimoDadosConjuntoComparacao = null;
     let ultimosFiltrosComparacao = null;
@@ -2933,12 +3070,12 @@
 
     function imprimirRelatorio() {
         if (!ultimoDataset || !ultimosExtras || !ultimosFiltros) {
-            alert('Aguarde o painel carregar antes de imprimir o relatório.');
+            mostrarAviso('Aguarde o painel carregar antes de imprimir o relatório.');
             return;
         }
         const janela = window.open('', '_blank');
         if (!janela) {
-            alert('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups do navegador.');
+            mostrarAviso('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups do navegador.');
             return;
         }
         janela.document.open();
@@ -3094,12 +3231,12 @@
 
     function imprimirRelatorioComparacao() {
         if (!ultimasLinhasComparacao || !ultimoDadosConjuntoComparacao || !ultimosFiltrosComparacao) {
-            alert('Selecione os parceiros para comparar (pelo menos 2, ou 1 + "Demais Parceiros") antes de imprimir.');
+            mostrarAviso('Selecione os parceiros para comparar (pelo menos 2, ou 1 + "Demais Parceiros") antes de imprimir.');
             return;
         }
         const janela = window.open('', '_blank');
         if (!janela) {
-            alert('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups do navegador.');
+            mostrarAviso('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups do navegador.');
             return;
         }
         janela.document.open();
@@ -3144,7 +3281,7 @@
             link.href = dataUrl;
             link.click();
         } catch {
-            alert('Não foi possível gerar a captura da página.');
+            mostrarAviso('Não foi possível gerar a captura da página.');
         } finally {
             exibicaoOriginal.forEach((valor, el) => { el.style.display = valor; });
             btn.disabled = false;
@@ -3191,7 +3328,7 @@
             link.href = dataUrl;
             link.click();
         } catch {
-            alert('Não foi possível gerar a captura do resumo.');
+            mostrarAviso('Não foi possível gerar a captura do resumo.');
         } finally {
             corpo.style.overflowY = overflowOriginal;
             corpo.style.maxHeight = alturaOriginal;
@@ -3201,6 +3338,19 @@
             btn.disabled = false;
             btn.textContent = textoOriginal;
         }
+    }
+
+    // ── Modal de aviso: substitui o alert() nativo do navegador por um popup com a
+    // mesma identidade visual do painel. Não bloqueia a execução (diferente do alert
+    // original), mas em todos os pontos onde era usado o código já parava logo em
+    // seguida com um "return", então o comportamento na prática é o mesmo.
+    function mostrarAviso(mensagem) {
+        document.getElementById('modalAvisoMensagem').textContent = mensagem;
+        document.getElementById('modalAviso').classList.add('aberto');
+    }
+
+    function fecharModalAviso() {
+        document.getElementById('modalAviso').classList.remove('aberto');
     }
 
     // ── Modal de configuração da chave da API (Groq) ──
@@ -3222,7 +3372,7 @@
         const input = document.getElementById('inputGroqApiKey');
         const chave = input.value.trim();
         if (!chave) {
-            alert('Cole uma chave válida antes de salvar.');
+            mostrarAviso('Cole uma chave válida antes de salvar.');
             return;
         }
         localStorage.setItem('groqApiKey', chave);
@@ -3233,7 +3383,7 @@
     // próprios e independentes dos filtros globais do painel. ──
     function abrirModalResumo() {
         if (!descarteCompleto || !producaoCompleto) {
-            alert('Aguarde o painel carregar os dados antes de abrir o resumo.');
+            mostrarAviso('Aguarde o painel carregar os dados antes de abrir o resumo.');
             return;
         }
         popularFiltrosResumo();
@@ -3242,6 +3392,7 @@
         // o que faz a produção por parceiro aparecer bem maior/errada aqui.
         document.getElementById('resumoDescarteDe').value = document.getElementById('filtroDe').value;
         document.getElementById('resumoDescarteAte').value = document.getElementById('filtroAte').value;
+        renderizarChipsDatasEspecificas();
         aplicarFiltrosResumo();
         document.getElementById('modalResumo').classList.add('aberto');
     }
@@ -3298,7 +3449,41 @@
         document.getElementById('resumoDescarteAte').value = '';
         document.getElementById('resumoColheitaDe').value = '';
         document.getElementById('resumoColheitaAte').value = '';
+        document.getElementById('resumoDataEspecificaInput').value = '';
+        datasEspecificasResumo.clear();
+        renderizarChipsDatasEspecificas();
         aplicarFiltrosResumo();
+    }
+
+    // Adiciona a data escolhida no input à lista de datas avulsas do Resumo (chips),
+    // permitindo somar só dias específicos (ex.: 11/07, 14/07 e 18/07) em vez de um
+    // período contínuo.
+    function adicionarDataEspecificaResumo() {
+        const input = document.getElementById('resumoDataEspecificaInput');
+        if (!input.value) return;
+        datasEspecificasResumo.add(input.value);
+        input.value = '';
+        renderizarChipsDatasEspecificas();
+        aplicarFiltrosResumo();
+    }
+
+    function removerDataEspecificaResumo(data) {
+        datasEspecificasResumo.delete(data);
+        renderizarChipsDatasEspecificas();
+        aplicarFiltrosResumo();
+    }
+
+    function renderizarChipsDatasEspecificas() {
+        const datasOrdenadas = [...datasEspecificasResumo].sort();
+        document.getElementById('resumoDatasEspecificasChips').innerHTML = datasOrdenadas.map(data => `
+            <span class="data-chip">${formatarDataBarra(data)}<button type="button" data-data="${data}" title="Remover">✕</button></span>
+        `).join('');
+
+        // Enquanto houver datas avulsas escolhidas, o período De/Até vira redundante
+        // (a lista de datas manda) — desabilita pra deixar isso visualmente claro.
+        const usando = datasOrdenadas.length > 0;
+        document.getElementById('resumoDescarteDe').disabled = usando;
+        document.getElementById('resumoDescarteAte').disabled = usando;
     }
 
     function aplicarFiltrosResumo() {
@@ -3312,6 +3497,10 @@
         const descarteAte = document.getElementById('resumoDescarteAte').value;
         const colheitaDe = document.getElementById('resumoColheitaDe').value;
         const colheitaAte = document.getElementById('resumoColheitaAte').value;
+        // Se houver datas avulsas escolhidas (chips), elas substituem o período
+        // De/Até da DT Descarte — soma só os dias marcados, ignorando os demais.
+        const datasEspecificas = datasEspecificasResumo;
+        const usarDatasEspecificas = datasEspecificas.size > 0;
 
         const classesNorm = new Set(classes.map(normalizarTexto));
         const parceirosNorm = new Set(parceiros.map(normalizarTexto));
@@ -3326,8 +3515,9 @@
             .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
             .filter(r => !parceirosNorm.size || parceirosNorm.has(normalizarTexto(r.parceiro)))
             .filter(r => !motivosNorm.size || motivosNorm.has(normalizarTexto(r.motivo)))
-            .filter(r => !descarteDe || r.data >= descarteDe)
-            .filter(r => !descarteAte || r.data <= descarteAte)
+            .filter(r => usarDatasEspecificas ? datasEspecificas.has(r.data) : true)
+            .filter(r => usarDatasEspecificas || !descarteDe || r.data >= descarteDe)
+            .filter(r => usarDatasEspecificas || !descarteAte || r.data <= descarteAte)
             .filter(r => !colheitaDe || (r.dataColheita && r.dataColheita >= colheitaDe))
             .filter(r => !colheitaAte || (r.dataColheita && r.dataColheita <= colheitaAte));
 
@@ -3336,8 +3526,9 @@
             .filter(r => !parceirosNorm.size || !r.parceiro || parceirosNorm.has(normalizarTexto(r.parceiro)))
             .filter(r => !colheitaDe || r.data >= colheitaDe)
             .filter(r => !colheitaAte || r.data <= colheitaAte)
-            .filter(r => !descarteDe || r.data >= descarteDe)
-            .filter(r => !descarteAte || r.data <= descarteAte);
+            .filter(r => usarDatasEspecificas ? datasEspecificas.has(r.data) : true)
+            .filter(r => usarDatasEspecificas || !descarteDe || r.data >= descarteDe)
+            .filter(r => usarDatasEspecificas || !descarteAte || r.data <= descarteAte);
 
         const dados = agregarDados(descarteFiltrado, producaoFiltrada);
 
@@ -3405,7 +3596,7 @@
     async function copiarDadosResumo() {
         const btn = document.getElementById('btnCopiarResumo');
         if (!ultimasLinhasResumo.length) {
-            alert('Não há dados para copiar.');
+            mostrarAviso('Não há dados para copiar.');
             return;
         }
 
@@ -3428,7 +3619,7 @@
             btn.textContent = '✅ Copiado!';
             setTimeout(() => { btn.textContent = textoOriginal; }, 1500);
         } catch (erro) {
-            alert('Não foi possível copiar os dados. Copie manualmente.');
+            mostrarAviso('Não foi possível copiar os dados. Copie manualmente.');
         }
     }
 
@@ -3440,12 +3631,12 @@
         const resultado = document.getElementById('dicasIaResultado');
 
         if (!apiKey) {
-            alert('Configure sua chave da API da Groq no botão ⚙️ no topo do painel antes de gerar as dicas.');
+            mostrarAviso('Configure sua chave da API da Groq no botão ⚙️ no topo do painel antes de gerar as dicas.');
             abrirModalConfigIA();
             return;
         }
         if (!ultimoDataset || !ultimosFiltros) {
-            alert('Aguarde o painel carregar os dados antes de gerar as dicas.');
+            mostrarAviso('Aguarde o painel carregar os dados antes de gerar as dicas.');
             return;
         }
 
@@ -3522,12 +3713,12 @@ ${listaCombos}`;
         const resultado = document.getElementById('comparacaoDicasIaResultado');
 
         if (!apiKey) {
-            alert('Configure sua chave da API da Groq no botão ⚙️ no topo do painel antes de gerar a análise.');
+            mostrarAviso('Configure sua chave da API da Groq no botão ⚙️ no topo do painel antes de gerar a análise.');
             abrirModalConfigIA();
             return;
         }
         if (!ultimasLinhasComparacao || !ultimasLinhasComparacao.length) {
-            alert('Selecione os parceiros para comparar antes de gerar a análise.');
+            mostrarAviso('Selecione os parceiros para comparar antes de gerar a análise.');
             return;
         }
 
@@ -3728,7 +3919,7 @@ ${listaGrupos}`;
         if (primeiraCarga) {
             document.getElementById('conteudo').innerHTML = `<p class="msg-erro">${mensagem}</p>`;
         } else {
-            alert(mensagem);
+            mostrarAviso(mensagem);
         }
     }
 
@@ -4428,6 +4619,14 @@ ${listaGrupos}`;
         if (e.target.id === 'modalConfigIA') fecharModalConfigIA();
     });
 
+    document.getElementById('btnFecharAviso').addEventListener('click', fecharModalAviso);
+    document.getElementById('modalAviso').addEventListener('click', (e) => {
+        if (e.target.id === 'modalAviso') fecharModalAviso();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('modalAviso').classList.contains('aberto')) fecharModalAviso();
+    });
+
     document.getElementById('btnResumo').addEventListener('click', abrirModalResumo);
     document.getElementById('btnFecharResumo').addEventListener('click', fecharModalResumo);
     document.getElementById('btnAtualizarResumo').addEventListener('click', async () => {
@@ -4453,6 +4652,14 @@ ${listaGrupos}`;
     document.getElementById('btnCopiarResumo').addEventListener('click', copiarDadosResumo);
     ['resumoFiltroId', 'resumoDescarteDe', 'resumoDescarteAte', 'resumoColheitaDe', 'resumoColheitaAte', 'resumoPesoSeparadoToggle'].forEach(id => {
         document.getElementById(id).addEventListener('change', aplicarFiltrosResumo);
+    });
+    document.getElementById('btnAdicionarDataEspecificaResumo').addEventListener('click', adicionarDataEspecificaResumo);
+    document.getElementById('resumoDataEspecificaInput').addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); adicionarDataEspecificaResumo(); }
+    });
+    document.getElementById('resumoDatasEspecificasChips').addEventListener('click', (ev) => {
+        const btn = ev.target.closest('button[data-data]');
+        if (btn) removerDataEspecificaResumo(btn.dataset.data);
     });
     document.getElementById('thResumoData').addEventListener('click', () => {
         ordenacaoResumoAsc = !ordenacaoResumoAsc;
