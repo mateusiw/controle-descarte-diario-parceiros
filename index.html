@@ -3565,16 +3565,6 @@
     function aplicarFiltrosResumo() {
         if (!descarteCompleto || !producaoCompleto) return;
 
-        // Mesmo comportamento do painel principal: com Cultura/Motivo selecionados,
-        // o filtro Parceiro só lista quem tem registro naquela cultura/motivo (e
-        // desmarca quem deixou de bater — por isso roda antes de ler
-        // filtrosMulti.resumoParceiro abaixo).
-        atualizarDisponibilidadeParceiros('resumoParceiro', 'resumoClasse', 'resumoMotivo', 'Todos');
-
-        const idSelecionado = document.getElementById('resumoFiltroId').value;
-        const classes = [...filtrosMulti.resumoClasse];
-        const parceiros = [...filtrosMulti.resumoParceiro];
-        const motivos = [...filtrosMulti.resumoMotivo];
         const descarteDe = document.getElementById('resumoDescarteDe').value;
         const descarteAte = document.getElementById('resumoDescarteAte').value;
         const colheitaDe = document.getElementById('resumoColheitaDe').value;
@@ -3583,6 +3573,39 @@
         // De/Até da DT Colheita — soma só os dias marcados, ignorando os demais.
         const datasEspecificas = datasEspecificasResumo;
         const usarDatasEspecificas = datasEspecificas.size > 0;
+        const periodoAtivo = !!(descarteDe || descarteAte || colheitaDe || colheitaAte || usarDatasEspecificas);
+
+        // Reaproveitados tanto pra filtrar as linhas quanto pra decidir, logo abaixo,
+        // quais parceiros aparecem na lista (só quem teve descarte/produção dentro
+        // do período/datas escolhidos).
+        const filtroDataDescarte = r => (!descarteDe || r.data >= descarteDe)
+            && (!descarteAte || r.data <= descarteAte)
+            && (usarDatasEspecificas ? (r.dataColheita && datasEspecificas.has(r.dataColheita)) : true)
+            && (usarDatasEspecificas || !colheitaDe || (r.dataColheita && r.dataColheita >= colheitaDe))
+            && (usarDatasEspecificas || !colheitaAte || (r.dataColheita && r.dataColheita <= colheitaAte));
+        const filtroDataProducao = r => (usarDatasEspecificas ? datasEspecificas.has(r.data) : true)
+            && (usarDatasEspecificas || !colheitaDe || r.data >= colheitaDe)
+            && (usarDatasEspecificas || !colheitaAte || r.data <= colheitaAte)
+            && (!descarteDe || r.data >= descarteDe)
+            && (!descarteAte || r.data <= descarteAte);
+
+        // Mesmo comportamento do painel principal: com Cultura/Motivo selecionados,
+        // o filtro Parceiro só lista quem tem registro naquela cultura/motivo — aqui
+        // também considera o período/datas específicas escolhidos (o painel principal
+        // e a Comparação não fazem isso de propósito, olham o histórico inteiro; o
+        // Resumo é sobre um recorte específico, então faz sentido restringir por
+        // data também). Roda antes de ler filtrosMulti.resumoParceiro abaixo, porque
+        // pode desmarcar automaticamente quem deixou de bater.
+        atualizarDisponibilidadeParceiros('resumoParceiro', 'resumoClasse', 'resumoMotivo', 'Todos', {
+            ativo: periodoAtivo,
+            descarte: filtroDataDescarte,
+            producao: filtroDataProducao
+        });
+
+        const idSelecionado = document.getElementById('resumoFiltroId').value;
+        const classes = [...filtrosMulti.resumoClasse];
+        const parceiros = [...filtrosMulti.resumoParceiro];
+        const motivos = [...filtrosMulti.resumoMotivo];
 
         const classesNorm = new Set(classes.map(normalizarTexto));
         const parceirosNorm = new Set(parceiros.map(normalizarTexto));
@@ -3597,20 +3620,12 @@
             .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
             .filter(r => !parceirosNorm.size || parceirosNorm.has(normalizarTexto(r.parceiro)))
             .filter(r => !motivosNorm.size || motivosNorm.has(normalizarTexto(r.motivo)))
-            .filter(r => !descarteDe || r.data >= descarteDe)
-            .filter(r => !descarteAte || r.data <= descarteAte)
-            .filter(r => usarDatasEspecificas ? (r.dataColheita && datasEspecificas.has(r.dataColheita)) : true)
-            .filter(r => usarDatasEspecificas || !colheitaDe || (r.dataColheita && r.dataColheita >= colheitaDe))
-            .filter(r => usarDatasEspecificas || !colheitaAte || (r.dataColheita && r.dataColheita <= colheitaAte));
+            .filter(filtroDataDescarte);
 
         const producaoFiltrada = producaoCompleto
             .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
             .filter(r => !parceirosNorm.size || !r.parceiro || parceirosNorm.has(normalizarTexto(r.parceiro)))
-            .filter(r => usarDatasEspecificas ? datasEspecificas.has(r.data) : true)
-            .filter(r => usarDatasEspecificas || !colheitaDe || r.data >= colheitaDe)
-            .filter(r => usarDatasEspecificas || !colheitaAte || r.data <= colheitaAte)
-            .filter(r => !descarteDe || r.data >= descarteDe)
-            .filter(r => !descarteAte || r.data <= descarteAte);
+            .filter(filtroDataProducao);
 
         const dados = agregarDados(descarteFiltrado, producaoFiltrada);
 
@@ -4156,12 +4171,18 @@ ${listaGrupos}`;
 
     // Esconde de um seletor de Parceiros quem nunca teve descarte/produção na
     // Cultura/Motivo escolhidos no mesmo painel (ex.: com Cultura = Brócolis, some quem
-    // só trabalha com Tomate) — olha o histórico inteiro, não só o período filtrado,
-    // pra um parceiro não sumir da lista só por não ter registro nas datas selecionadas.
-    // Se um parceiro já selecionado deixa de bater, ele é desmarcado automaticamente.
-    // Compartilhada entre o painel principal (parceiro/classe/motivo) e a aba de
-    // Comparação (compararParceiros/compararClasse/compararMotivo).
-    function atualizarDisponibilidadeParceiros(campoParceiros, campoClasse, campoMotivo, rotuloVazio) {
+    // só trabalha com Tomate) — por padrão olha o histórico inteiro, não só o período
+    // filtrado, pra um parceiro não sumir da lista só por não ter registro nas datas
+    // selecionadas. Se um parceiro já selecionado deixa de bater, ele é desmarcado
+    // automaticamente. Compartilhada entre o painel principal (parceiro/classe/motivo),
+    // a aba de Comparação (compararParceiros/compararClasse/compararMotivo) e o Resumo
+    // (resumoParceiro/resumoClasse/resumoMotivo).
+    //
+    // filtroPeriodo (opcional): { ativo, descarte(r), producao(r) } — usado só pelo
+    // Resumo, que (diferente do painel/Comparação) também restringe a lista pelo
+    // período/datas específicas escolhidos ali, já que ele é sobre um recorte
+    // específico em vez do histórico completo.
+    function atualizarDisponibilidadeParceiros(campoParceiros, campoClasse, campoMotivo, rotuloVazio, filtroPeriodo) {
         const Campo = `${campoParceiros[0].toUpperCase()}${campoParceiros.slice(1)}`;
         const opcoes = document.getElementById(`filtro${Campo}Opcoes`);
         const busca = document.getElementById(`filtro${Campo}Busca`);
@@ -4169,13 +4190,15 @@ ${listaGrupos}`;
 
         const classesNorm = new Set([...filtrosMulti[campoClasse]].map(normalizarTexto));
         const motivosNorm = new Set([...filtrosMulti[campoMotivo]].map(normalizarTexto));
+        const periodoAtivo = !!(filtroPeriodo && filtroPeriodo.ativo);
 
-        let disponiveis = null; // null = sem filtro de Cultura/Motivo ativo, todo mundo disponível
-        if (classesNorm.size || motivosNorm.size) {
+        let disponiveis = null; // null = sem filtro de Cultura/Motivo/período ativo, todo mundo disponível
+        if (classesNorm.size || motivosNorm.size || periodoAtivo) {
             disponiveis = new Set();
             descarteCompleto
                 .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
                 .filter(r => !motivosNorm.size || motivosNorm.has(normalizarTexto(r.motivo)))
+                .filter(r => !periodoAtivo || filtroPeriodo.descarte(r))
                 .forEach(r => { if (r.parceiro) disponiveis.add(normalizarTexto(r.parceiro)); });
 
             // Motivo só existe em descarte — com só a Cultura filtrada (sem Motivo), também
@@ -4183,6 +4206,7 @@ ${listaGrupos}`;
             if (!motivosNorm.size) {
                 producaoCompleto
                     .filter(r => !classesNorm.size || classesNorm.has(normalizarTexto(r.classe)))
+                    .filter(r => !periodoAtivo || filtroPeriodo.producao(r))
                     .forEach(r => { if (r.parceiro) disponiveis.add(normalizarTexto(r.parceiro)); });
             }
         }
