@@ -857,6 +857,18 @@
         margin-bottom: 14px;
     }
 
+    .modal-campo { margin-bottom: 12px; }
+
+    .modal-campo label {
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 5px;
+    }
+
     .modal-campo input {
         width: 100%;
         border: 1px solid #dbe2df;
@@ -875,6 +887,47 @@
         box-shadow: 0 0 0 3px var(--emerald-100);
     }
 
+    /* Modal de editar lançamento: duas colunas em telas largas pra não ficar um
+       formulário longo e estreito no meio da tela. */
+    .modal-card.modal-editar { max-width: 520px; }
+    .modal-editar-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 14px;
+    }
+    .modal-editar-grid .modal-campo-full { grid-column: 1 / -1; }
+
+    .modal-excluir {
+        background: var(--rose-600);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+    }
+    .modal-excluir:hover { background: #be123c; }
+    .modal-excluir:disabled { background: #f4b8c4; cursor: not-allowed; }
+
+    /* ── Botões de ação (editar/excluir) na tabela do Resumo ── */
+    .col-acoes { white-space: nowrap; text-align: right; }
+    .btn-acao-linha {
+        border: 1px solid var(--card-border);
+        background: #fff;
+        border-radius: 8px;
+        width: 28px;
+        height: 28px;
+        font-size: 0.82rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-acao-linha + .btn-acao-linha { margin-left: 6px; }
+    .btn-acao-linha:hover { background: var(--emerald-50); border-color: var(--emerald-500); }
+    .btn-excluir-linha:hover { background: var(--rose-100); border-color: var(--rose-600); }
+
     .modal-status {
         font-size: 0.72rem;
         min-height: 1em;
@@ -882,6 +935,7 @@
     }
 
     .modal-status.ok { color: var(--emerald-600); font-weight: 700; }
+    .modal-status.erro { color: var(--rose-600); font-weight: 700; }
 
     .modal-acoes { display: flex; justify-content: flex-end; gap: 10px; }
 
@@ -914,6 +968,10 @@
     /* ── Modal de aviso (substitui os alert() nativos do navegador por um popup
        com a mesma identidade visual do resto do painel) ── */
     .modal-aviso-overlay { z-index: 80; }
+
+    /* Editar/excluir lançamento são abertos de dentro do modal Resumo (tela cheia,
+       z-index 60) — sem isso ficariam escondidos atrás dele. */
+    #modalEditarLinha, #modalExcluirLinha { z-index: 80; }
 
     .modal-aviso-card {
         display: flex;
@@ -1449,6 +1507,60 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="modalEditarLinha">
+    <div class="modal-card modal-editar">
+        <div class="modal-titulo">✏️ Editar lançamento</div>
+        <p class="modal-sub">ID: <strong id="editarLinhaId">—</strong> — corrija os dados e salve. A alteração é gravada direto na planilha.</p>
+        <div class="modal-editar-grid">
+            <div class="modal-campo">
+                <label for="editarDataColheita">DT Colheita</label>
+                <input type="date" id="editarDataColheita">
+            </div>
+            <div class="modal-campo">
+                <label for="editarDataDescarte">DT Descarte</label>
+                <input type="date" id="editarDataDescarte">
+            </div>
+            <div class="modal-campo">
+                <label for="editarHoraDescarte">Hora do Descarte</label>
+                <input type="time" id="editarHoraDescarte">
+            </div>
+            <div class="modal-campo">
+                <label for="editarDescartadoKg">Descarte (kg)</label>
+                <input type="number" step="0.1" min="0" id="editarDescartadoKg">
+            </div>
+            <div class="modal-campo modal-campo-full">
+                <label for="editarParceiro">Parceiro</label>
+                <input type="text" id="editarParceiro">
+            </div>
+            <div class="modal-campo modal-campo-full">
+                <label for="editarMotivo">Motivo</label>
+                <input type="text" id="editarMotivo">
+            </div>
+            <div class="modal-campo modal-campo-full">
+                <label for="editarClasse">Cultura</label>
+                <input type="text" id="editarClasse">
+            </div>
+        </div>
+        <p class="modal-status" id="statusEditarLinha"></p>
+        <div class="modal-acoes">
+            <button class="modal-cancelar" type="button" id="btnCancelarEditarLinha">Cancelar</button>
+            <button class="modal-salvar" type="button" id="btnSalvarEditarLinha">Salvar alterações</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay modal-aviso-overlay" id="modalExcluirLinha">
+    <div class="modal-card modal-aviso-card">
+        <div class="modal-aviso-icone">🗑️</div>
+        <p class="modal-aviso-mensagem">Excluir o lançamento <strong id="excluirLinhaId">—</strong>? Essa ação remove a linha diretamente da planilha e não pode ser desfeita.</p>
+        <p class="modal-status" id="statusExcluirLinha"></p>
+        <div class="modal-acoes modal-aviso-acoes">
+            <button class="modal-cancelar" type="button" id="btnCancelarExcluirLinha">Cancelar</button>
+            <button class="modal-excluir" type="button" id="btnConfirmarExcluirLinha">Excluir</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-resumo-overlay" id="modalResumo">
     <div class="modal-resumo-painel">
         <div class="modal-resumo-header">
@@ -1569,6 +1681,7 @@
                                 <th>Produção (kg)</th>
                                 <th>Descarte (kg)</th>
                                 <th>% Descarte</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="corpoResumoTabela"></tbody>
@@ -1752,6 +1865,8 @@
     let ultimasDicasIA = [];
     let ultimasLinhasResumo = [];
     let ordenacaoResumoAsc = false;
+    let linhaEmEdicaoResumo = null;
+    let idExclusaoResumo = null;
     // Datas avulsas escolhidas no Resumo (ex.: 11/07, 14/07, 18/07) — quando
     // preenchidas, substituem o filtro de período De/Até da DT Descarte.
     let datasEspecificasResumo = new Set();
@@ -1843,6 +1958,14 @@
 
     function normalizarTexto(str) {
         return String(str).toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function escaparHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     // Sítio Rafael e Sítio Reginaldo são o mesmo sítio na prática — unifica os dois
@@ -3381,6 +3504,9 @@
         const alturaPainelOriginal = painel.style.height;
         const exibicaoHeaderOriginal = header.style.display;
         const exibicaoFiltrosOriginal = filtros.style.display;
+        // Coluna de Ações (editar/excluir) não faz sentido numa captura pra
+        // compartilhar/imprimir — esconde ela também, junto com header/filtros.
+        const colunasAcoes = document.querySelectorAll('.resumo-tabela-card th:last-child, .resumo-tabela-card .col-acoes');
 
         btn.disabled = true;
         btn.textContent = '📸 Gerando imagem...';
@@ -3394,6 +3520,7 @@
         // durante a captura, pra não aparecerem na imagem.
         header.style.display = 'none';
         filtros.style.display = 'none';
+        colunasAcoes.forEach(el => { el.style.display = 'none'; });
 
         try {
             const dataUrl = await htmlToImage.toPng(painel, {
@@ -3413,6 +3540,7 @@
             painel.style.height = alturaPainelOriginal;
             header.style.display = exibicaoHeaderOriginal;
             filtros.style.display = exibicaoFiltrosOriginal;
+            colunasAcoes.forEach(el => { el.style.display = ''; });
             btn.disabled = false;
             btn.textContent = textoOriginal;
         }
@@ -3644,15 +3772,36 @@
             producaoPorParceiroData[chave] = (producaoPorParceiroData[chave] || 0) + r.producaoKg;
         });
 
+        // Quantas linhas cada ID Exclusivo ocupa na planilha original (antes de somar
+        // Rafael+Reginaldo) — usado pra saber, na visão unificada, se uma linha do
+        // Resumo representa um lançamento dividido entre dois sítios.
+        const contagemLinhasPorId = {};
+        (descarteCompletoSeparado || []).forEach(r => {
+            if (!r.idExclusivo) return;
+            contagemLinhasPorId[r.idExclusivo] = (contagemLinhasPorId[r.idExclusivo] || 0) + 1;
+        });
+
         ultimasLinhasResumo = descarteFiltrado.map(r => {
             const producaoRef = producaoPorParceiroData[`${normalizarTexto(r.parceiro)}|${r.dataColheita}`] || 0;
             const percentual = producaoRef ? (r.descartadoKg / producaoRef * 100) : 0;
+            // Dividido = lançamento de Sítio Rafael/Reginaldo, visto de forma unificada
+            // (peso separado desligado). Editar/excluir essa linha aplica nas DUAS
+            // linhas da planilha — ver salvarEdicaoLinhaResumo/confirmarExclusaoLinhaResumo.
+            const dividido = !pesoSeparado && (contagemLinhasPorId[r.idExclusivo] || 0) > 1;
             return {
                 idExclusivo: r.idExclusivo,
                 dataColheita: r.dataColheita,
                 dataDescarte: r.data,
                 horaDescarte: r.horaDescarte,
                 parceiro: pesoSeparado ? (r.origemParceiro || r.parceiro) : r.parceiro,
+                // Nome do parceiro exatamente como está gravado na planilha (antes da
+                // unificação Rafael/Reginaldo → Sítio Leitão) — usado só como desempate
+                // ao editar/excluir, pra achar a linha certa quando duas linhas dividem
+                // o mesmo ID Exclusivo. Ver localizarLinhasDescartePorId no Code_Descarte.gs.
+                // Fica undefined quando dividido: sem esse desempate, o backend aplica a
+                // edição/exclusão nas duas linhas de uma vez em vez de escolher uma só.
+                parceiroPlanilha: dividido ? undefined : (r.origemParceiro || r.parceiro),
+                dividido,
                 motivo: r.motivo,
                 classe: r.classe,
                 producaoKg: producaoRef,
@@ -3684,8 +3833,189 @@
                 <td>${Number(r.producaoKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
                 <td>${Number(r.descartadoKg).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
                 <td><span class="pct-badge" style="background:${corPct(r.percentual)}">${formatarPct(r.percentual)}</span></td>
+                <td class="col-acoes">
+                    ${r.idExclusivo ? `
+                        <button type="button" class="btn-acao-linha btn-editar-linha" data-id="${escaparHtml(r.idExclusivo)}" title="Editar lançamento">✏️</button>
+                        <button type="button" class="btn-acao-linha btn-excluir-linha" data-id="${escaparHtml(r.idExclusivo)}" title="Excluir lançamento">🗑️</button>
+                    ` : '—'}
+                </td>
             </tr>
-        `).join('') || '<tr><td colspan="9" style="text-align:center;">Sem registros para os filtros selecionados.</td></tr>';
+        `).join('') || '<tr><td colspan="10" style="text-align:center;">Sem registros para os filtros selecionados.</td></tr>';
+    }
+
+    // ── Editar/excluir lançamento (aba Resumo): grava direto na planilha via POST
+    // pro mesmo Apps Script que já serve os GETs. Content-Type text/plain evita o
+    // preflight de CORS (o Apps Script não responde OPTIONS). ──
+    function abrirModalEditarLinha(idExclusivo) {
+        const linha = ultimasLinhasResumo.find(r => r.idExclusivo === idExclusivo);
+        if (!linha) { mostrarAviso('Registro não encontrado.'); return; }
+
+        linhaEmEdicaoResumo = linha;
+        document.getElementById('editarLinhaId').textContent = linha.idExclusivo || '—';
+        document.getElementById('editarDataColheita').value = linha.dataColheita || '';
+        document.getElementById('editarDataDescarte').value = linha.dataDescarte || '';
+        document.getElementById('editarHoraDescarte').value = linha.horaDescarte || '';
+        document.getElementById('editarParceiro').value = linha.parceiro || '';
+        document.getElementById('editarParceiro').disabled = !!linha.dividido;
+        document.getElementById('editarMotivo').value = linha.motivo || '';
+        document.getElementById('editarClasse').value = linha.classe || '';
+        document.getElementById('editarDescartadoKg').value = linha.descartadoKg || 0;
+
+        const status = document.getElementById('statusEditarLinha');
+        status.className = 'modal-status';
+        status.textContent = linha.dividido
+            ? 'Lançamento dividido entre Sítio Rafael e Sítio Reginaldo: ao salvar, a alteração é aplicada nas duas linhas da planilha (peso repartido 50/50).'
+            : '';
+
+        document.getElementById('modalEditarLinha').classList.add('aberto');
+    }
+
+    function fecharModalEditarLinha() {
+        document.getElementById('modalEditarLinha').classList.remove('aberto');
+        linhaEmEdicaoResumo = null;
+    }
+
+    // Confere se o parceiro tem produção lançada na data informada (aba PRD
+    // Consolidado) — evita salvar uma DT Colheita pra um dia em que aquele parceiro
+    // não colheu nada. Compara pelo nome já unificado (Sítio Rafael/Reginaldo ->
+    // Sítio Leitão), já que é assim que a produção é gravada/agrupada.
+    function existeProducaoParaParceiroData(parceiro, data) {
+        if (!producaoCompleto || !parceiro || !data) return false;
+        const parceiroNorm = normalizarTexto(unificarParceiro(parceiro));
+        return producaoCompleto.some(r => normalizarTexto(r.parceiro) === parceiroNorm && r.data === data);
+    }
+
+    // Roda a cada mudança de DT Colheita/Parceiro no modal (não só no clique de
+    // Salvar), pra avisar na hora se não há produção lançada pra essa combinação —
+    // em vez de só descobrir depois de tentar salvar. Só valida quando algum dos
+    // dois campos realmente mudou em relação ao lançamento original (evita acusar
+    // erro em edições sem relação, tipo corrigir o texto do motivo).
+    function validarProducaoEdicao() {
+        if (!linhaEmEdicaoResumo) return true;
+
+        const status = document.getElementById('statusEditarLinha');
+        const dataColheita = document.getElementById('editarDataColheita').value;
+        const parceiro = document.getElementById('editarParceiro').value.trim();
+        if (!dataColheita || !parceiro) return true; // campo vazio: quem cuida disso é o clique em Salvar
+
+        const dataColheitaMudou = dataColheita !== linhaEmEdicaoResumo.dataColheita;
+        const parceiroMudou = parceiro !== (linhaEmEdicaoResumo.parceiro || '');
+        if ((dataColheitaMudou || parceiroMudou) && !existeProducaoParaParceiroData(parceiro, dataColheita)) {
+            status.textContent = `Não há produção registrada para "${parceiro}" em ${formatarDataBarra(dataColheita)}. Lance a produção desse dia antes de mudar a DT Colheita, ou informe a data correta.`;
+            status.classList.add('erro');
+            return false;
+        }
+
+        status.textContent = '';
+        status.classList.remove('erro');
+        return true;
+    }
+
+    async function salvarEdicaoLinhaResumo() {
+        if (!linhaEmEdicaoResumo) return;
+
+        const status = document.getElementById('statusEditarLinha');
+        const payload = {
+            acao: 'editar',
+            idExclusivo: linhaEmEdicaoResumo.idExclusivo,
+            parceiroPlanilha: linhaEmEdicaoResumo.parceiroPlanilha,
+            dataColheita: document.getElementById('editarDataColheita').value,
+            dataDescarte: document.getElementById('editarDataDescarte').value,
+            horaDescarte: document.getElementById('editarHoraDescarte').value,
+            parceiro: document.getElementById('editarParceiro').value.trim(),
+            motivo: document.getElementById('editarMotivo').value.trim(),
+            classe: document.getElementById('editarClasse').value.trim(),
+            descartadoKg: document.getElementById('editarDescartadoKg').value
+        };
+
+        if (!payload.dataColheita || !payload.dataDescarte || !payload.horaDescarte) {
+            status.textContent = 'Preencha as duas datas e a hora do descarte.';
+            status.classList.add('erro');
+            return;
+        }
+
+        if (!validarProducaoEdicao()) return;
+
+        const btn = document.getElementById('btnSalvarEditarLinha');
+        btn.disabled = true;
+        btn.textContent = 'Salvando...';
+        status.textContent = '';
+        status.classList.remove('erro');
+
+        try {
+            const json = await enviarAcaoDescarte(payload);
+            if (!json.ok) throw new Error(json.erro || 'Erro ao salvar as alterações.');
+
+            fecharModalEditarLinha();
+            await carregarDadosCompletos(true);
+            popularFiltrosResumo();
+            aplicarFiltrosResumo();
+        } catch (erro) {
+            status.textContent = 'Não foi possível salvar: ' + erro.message;
+            status.classList.add('erro');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Salvar alterações';
+        }
+    }
+
+    function abrirModalExcluirLinha(idExclusivo) {
+        const linha = ultimasLinhasResumo.find(r => r.idExclusivo === idExclusivo);
+        if (!linha) { mostrarAviso('Registro não encontrado.'); return; }
+
+        idExclusaoResumo = linha;
+        document.getElementById('excluirLinhaId').textContent = linha.idExclusivo || '—';
+        const status = document.getElementById('statusExcluirLinha');
+        status.classList.remove('erro');
+        status.textContent = linha.dividido
+            ? 'Dividido entre Sítio Rafael e Sítio Reginaldo: as duas linhas da planilha serão excluídas.'
+            : '';
+        document.getElementById('modalExcluirLinha').classList.add('aberto');
+    }
+
+    function fecharModalExcluirLinha() {
+        document.getElementById('modalExcluirLinha').classList.remove('aberto');
+        idExclusaoResumo = null;
+    }
+
+    async function confirmarExclusaoLinhaResumo() {
+        if (!idExclusaoResumo) return;
+
+        const status = document.getElementById('statusExcluirLinha');
+        const btn = document.getElementById('btnConfirmarExcluirLinha');
+        btn.disabled = true;
+        btn.textContent = 'Excluindo...';
+        status.textContent = '';
+        status.classList.remove('erro');
+
+        try {
+            const json = await enviarAcaoDescarte({
+                acao: 'excluir',
+                idExclusivo: idExclusaoResumo.idExclusivo,
+                parceiroPlanilha: idExclusaoResumo.parceiroPlanilha
+            });
+            if (!json.ok) throw new Error(json.erro || 'Erro ao excluir o registro.');
+
+            fecharModalExcluirLinha();
+            await carregarDadosCompletos(true);
+            popularFiltrosResumo();
+            aplicarFiltrosResumo();
+        } catch (erro) {
+            status.textContent = 'Não foi possível excluir: ' + erro.message;
+            status.classList.add('erro');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Excluir';
+        }
+    }
+
+    async function enviarAcaoDescarte(payload) {
+        const resp = await fetch(APPS_SCRIPT_URL_DESCARTE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+        return resp.json();
     }
 
     // Copia parceiro, kg descartado, motivo e cultura das linhas filtradas do Resumo
@@ -4730,7 +5060,10 @@ ${listaGrupos}`;
         if (e.target.id === 'modalAviso') fecharModalAviso();
     });
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && document.getElementById('modalAviso').classList.contains('aberto')) fecharModalAviso();
+        if (e.key !== 'Escape') return;
+        if (document.getElementById('modalAviso').classList.contains('aberto')) fecharModalAviso();
+        if (document.getElementById('modalEditarLinha').classList.contains('aberto')) fecharModalEditarLinha();
+        if (document.getElementById('modalExcluirLinha').classList.contains('aberto')) fecharModalExcluirLinha();
     });
 
     document.getElementById('btnResumo').addEventListener('click', abrirModalResumo);
@@ -4770,6 +5103,25 @@ ${listaGrupos}`;
     document.getElementById('thResumoData').addEventListener('click', () => {
         ordenacaoResumoAsc = !ordenacaoResumoAsc;
         renderizarTabelaResumo();
+    });
+
+    document.getElementById('corpoResumoTabela').addEventListener('click', (e) => {
+        const btnEditar = e.target.closest('.btn-editar-linha');
+        if (btnEditar) { abrirModalEditarLinha(btnEditar.dataset.id); return; }
+        const btnExcluir = e.target.closest('.btn-excluir-linha');
+        if (btnExcluir) abrirModalExcluirLinha(btnExcluir.dataset.id);
+    });
+    document.getElementById('btnCancelarEditarLinha').addEventListener('click', fecharModalEditarLinha);
+    document.getElementById('btnSalvarEditarLinha').addEventListener('click', salvarEdicaoLinhaResumo);
+    document.getElementById('modalEditarLinha').addEventListener('click', (e) => {
+        if (e.target.id === 'modalEditarLinha') fecharModalEditarLinha();
+    });
+    document.getElementById('editarDataColheita').addEventListener('change', validarProducaoEdicao);
+    document.getElementById('editarParceiro').addEventListener('input', validarProducaoEdicao);
+    document.getElementById('btnCancelarExcluirLinha').addEventListener('click', fecharModalExcluirLinha);
+    document.getElementById('btnConfirmarExcluirLinha').addEventListener('click', confirmarExclusaoLinhaResumo);
+    document.getElementById('modalExcluirLinha').addEventListener('click', (e) => {
+        if (e.target.id === 'modalExcluirLinha') fecharModalExcluirLinha();
     });
 
     document.getElementById('filtroDe').value = primeiroDiaDoMes();
