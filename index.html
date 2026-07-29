@@ -3711,11 +3711,21 @@
             && (usarDatasEspecificas ? (r.dataColheita && datasEspecificas.has(r.dataColheita)) : true)
             && (usarDatasEspecificas || !colheitaDe || (r.dataColheita && r.dataColheita >= colheitaDe))
             && (usarDatasEspecificas || !colheitaAte || (r.dataColheita && r.dataColheita <= colheitaAte));
-        const filtroDataProducao = r => (usarDatasEspecificas ? datasEspecificas.has(r.data) : true)
-            && (usarDatasEspecificas || !colheitaDe || r.data >= colheitaDe)
-            && (usarDatasEspecificas || !colheitaAte || r.data <= colheitaAte)
-            && (!descarteDe || r.data >= descarteDe)
-            && (!descarteAte || r.data <= descarteAte);
+
+        // Quando só a DT Descarte é usada como período (sem DT Colheita nem datas
+        // específicas), produção e descarte quase nunca caem no mesmo dia — filtrar a
+        // produção pelas mesmas datas do descarte zera o total. Nesse caso a produção
+        // certa é a das colheitas que geraram os descartes daquele período.
+        const usarColheitaImplicita = !usarDatasEspecificas && !colheitaDe && !colheitaAte && !!(descarteDe || descarteAte);
+        const datasColheitaNoPeriodo = usarColheitaImplicita
+            ? new Set(descarteCompleto.filter(filtroDataDescarte).map(r => r.dataColheita).filter(Boolean))
+            : null;
+
+        const filtroDataProducao = r => {
+            if (usarDatasEspecificas) return datasEspecificas.has(r.data);
+            if (usarColheitaImplicita) return datasColheitaNoPeriodo.has(r.data);
+            return (!colheitaDe || r.data >= colheitaDe) && (!colheitaAte || r.data <= colheitaAte);
+        };
 
         // Mesmo comportamento do painel principal: com Cultura/Motivo selecionados,
         // o filtro Parceiro só lista quem tem registro naquela cultura/motivo — aqui
