@@ -1063,6 +1063,15 @@
 
     .resumo-tabela-card .tabela-wrap { max-height: none; }
 
+    /* Linhas pares com contraste bem mais forte que o zebra padrão (#f6faf8) — a
+       tabela do Resumo costuma ter muito mais linhas visíveis de uma vez, então o
+       contraste sutil do painel principal dificultava acompanhar cada linha. */
+    .resumo-tabela-card tbody tr:nth-child(even) { background: #dcf1e7; }
+    .resumo-tabela-card tbody tr:nth-child(odd) { background: #ffffff; }
+    @media (hover: hover) {
+        .resumo-tabela-card tbody tr:hover { background: #bfe3d3; }
+    }
+
     /* ── Tabela + Comparativo ── */
     .row-tabela-comparativo { display: flex; flex-wrap: wrap; gap: 18px; align-items: stretch; }
     /* min-width: 0 é essencial aqui — sem isso, um item flex nunca encolhe além do
@@ -1433,6 +1442,8 @@
         tbody tr:nth-child(odd) td:first-child { background: #ffffff; }
         tbody tr:nth-child(even) td:first-child { background: #f6faf8; }
         .tabela-comparativo tbody tr.linha-atual td:first-child { background: var(--emerald-50); }
+        .resumo-tabela-card tbody tr:nth-child(odd) td:first-child { background: #ffffff; }
+        .resumo-tabela-card tbody tr:nth-child(even) td:first-child { background: #dcf1e7; }
 
         /* Dica visual de que dá pra arrastar a tabela pro lado: sombra + seta na borda
            direita, sempre visível (não é só sutil demais pra notar). */
